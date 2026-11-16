@@ -1,9 +1,13 @@
 import { atom, read, update } from 'claude-code'
-import type { Register, ThemeSetArgs } from 'claude-code'
+import type { EngineInterface, Register, ThemeSetArgs } from 'claude-code'
 
-import { makeColors } from './make-colors.js'
-import type { Ending, Insets } from '../types'
+import type { Ending, Insets } from '../../../types'
+import { makeColors } from '../../make-colors.js'
+import type { Theme } from '../theme.js'
 import { ASLEEP, ask, doze, draw, join, leave, resume, wake } from './scene.js'
+
+const PLUGIN = 'anime-themes'
+const SCENE = 'ina'
 
 // Purples taken from Ina's hair on a near-black ground, her orange for warnings.
 const { theme, problems } = makeColors({
@@ -29,42 +33,36 @@ const LOOK: ThemeSetArgs = {
   colors: theme,
   overrideColorScheme: 'dark',
   // No blur: it would smear the pixels behind a panel.
-  backdrop: { scene: 'ina', glass: { blur: 0, tint: '#07050c', opacity: 0.5 } },
+  backdrop: { scene: SCENE, glass: { blur: 0, tint: '#07050c', opacity: 0.5 } },
 }
 
-const scene = atom({ plugin: 'ina-pixel-dark', key: 'scene' } as const, ASLEEP, { shape: 'scene-2' })
+const scene = atom({ plugin: 'anime-themes', key: 'ina-scene' } as const, ASLEEP, { shape: 'scene-2' })
 
 // The desktop app draws its sidebar and its right-hand panel over the backdrop:
 // the takodachis and Ina stand this far in, past them. `/ina-insets` changes it.
 const PANELS: Insets = { left: 300, right: 345 }
-const insets = atom({ plugin: 'ina-pixel-dark', key: 'insets' } as const, PANELS)
+const insets = atom({ plugin: 'anime-themes', key: 'ina-insets' } as const, PANELS)
 const USAGE = 'Usage: /ina-insets <left> <right>, in pixels from the window edges (0 0 with the side panels closed).'
 
-export const register: Register = on => {
-  on('session.start', async ($, e, next) => {
-    const unpainted = problems.find(line => line.startsWith("Desktop won't paint"))
-
-    if (unpainted !== undefined) {
-      $.ui.toast(unpainted)
-    }
-    // A reload or a resumed session meets what ran before it: that is over.
-    await update($, scene, () => ASLEEP)
-    await $.command.register({
-      name: 'ina-insets',
-      description: 'Move Ina and the takodachis clear of the side panels',
-      argumentHint: '<left> <right>',
-    })
-    const kept = (await $.store.get('insets')) as Partial<Insets> | undefined
-    const { left, right } = kept ?? {}
-
-    if (typeof left === 'number' && typeof right === 'number') {
-      await update($, insets, () => ({ left, right }))
-    }
-    await $.theme.set(LOOK)
-
-    return next(e)
+/** Ina's part of a session starting: asleep, her command, and the insets last set. */
+export async function startIna($: EngineInterface) {
+  // A reload or a resumed session meets what ran before it: that is over.
+  await update($, scene, () => ASLEEP)
+  await $.command.register({
+    name: 'ina-insets',
+    description: 'Move Ina and the takodachis clear of the side panels',
+    argumentHint: '<left> <right>',
   })
+  const kept = (await $.store.get('ina-insets')) as Partial<Insets> | undefined
+  const { left, right } = kept ?? {}
 
+  if (typeof left === 'number' && typeof right === 'number') {
+    await update($, insets, () => ({ left, right }))
+  }
+}
+
+/** Ina's hooks. They run whichever theme is showing; her scene draws only while hers is. */
+export const registerIna: Register = on => {
   on('command.run', { command: 'ina-insets' }, async ($, e) => {
     const [left, right] = e.args.trim().split(/\s+/).map(Number)
 
@@ -73,7 +71,7 @@ export const register: Register = on => {
 
       return { text: `${USAGE} Now: ${now.left} ${now.right}.` }
     }
-    await $.store.set('insets', { left, right })
+    await $.store.set('ina-insets', { left, right })
     await update($, insets, () => ({ left, right }))
 
     return { text: `The takodachis stand ${left}px in from the left, Ina ${right}px in from the right.` }
@@ -108,7 +106,7 @@ export const register: Register = on => {
   })
 
   on('ui.render', { component: 'Backdrop' }, async ($, e, next) => {
-    if (e.props.plugin !== 'ina-pixel-dark' || (e.surface !== 'desktop' && e.surface !== 'mobile')) {
+    if (e.props.plugin !== PLUGIN || e.props.scene !== SCENE || (e.surface !== 'desktop' && e.surface !== 'mobile')) {
       return next(e)
     }
     const { Svg } = $.ui.resolve(e)
@@ -124,4 +122,14 @@ export const register: Register = on => {
       />
     )
   })
+}
+
+export const ina: Theme = {
+  id: 'ina-pixel-dark',
+  aliases: ['ina'],
+  label: 'Ina pixel dark',
+  blurb: 'Purple on black, with a pixel Ina who naps while idle, works in nerd glasses, and a takodachi for every subagent',
+  swatch: ['#07050c', '#191327', '#9b7fe0', '#d48bd8', '#f6a440', '#ece6fa'],
+  look: LOOK,
+  warning: problems.find(line => line.startsWith("Desktop won't paint")),
 }

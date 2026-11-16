@@ -1,4 +1,4 @@
-import type { Ending, Insets, Scene } from '../types'
+import type { Ending, Insets, Scene } from '../../../types'
 
 /**
  * The whole backdrop for a scene state, as SVG markup. Asleep or waiting, Ina

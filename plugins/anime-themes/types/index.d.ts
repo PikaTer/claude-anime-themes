@@ -32,6 +32,6 @@ export type Insets = { left: number; right: number }
 
 declare module 'claude-code' {
   interface PluginState {
-    'ina-pixel-dark': { scene: Shaped<Scene>; insets: Insets }
+    'anime-themes': { 'ina-scene': Shaped<Scene>; 'ina-insets': Insets }
   }
 }

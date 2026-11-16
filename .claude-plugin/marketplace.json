@@ -6,9 +6,9 @@
   },
   "plugins": [
     {
-      "name": "ina-pixel-dark",
-      "source": "./plugins/ina-pixel-dark",
-      "description": "Purple on black, with a pixel Ina who naps while idle, works in nerd glasses, and a takodachi for every subagent"
+      "name": "anime-themes",
+      "source": "./plugins/anime-themes",
+      "description": "Anime-inspired themes for Claude Code, with /anime-theme to preview and switch between them"
     }
   ]
 }

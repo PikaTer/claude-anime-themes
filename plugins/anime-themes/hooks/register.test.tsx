@@ -1,12 +1,13 @@
 import { expect, mock, test } from 'claude-code/testing'
+import type { Engine } from 'claude-code/testing'
 
-import { ASLEEP, doze, draw, join, leave, wake } from './scene.js'
+import { ASLEEP, doze, draw, join, leave, wake } from './themes/ina-pixel-dark/scene.js'
 
 const BACKDROP = {
-  plugin: 'ina-pixel-dark',
+  plugin: 'anime-themes',
   surface: 'desktop',
   component: 'Backdrop',
-  props: { scene: 'ina', plugin: 'ina-pixel-dark', glass: false },
+  props: { scene: 'ina', plugin: 'anime-themes', glass: false },
 } as const
 
 // How the scene draws one takodachi, and one takodachi's WAH.
@@ -20,7 +21,7 @@ test('Ina sleeps still, works the main turn, waits on a question, and each subag
   mock.store(on)
   on('session.start', (_, e) => ({ cwd: e.cwd }))
   on('theme.set', () => ({ value: { isDrawn: true, requestId: 'backdrop' } }))
-  on('command.register', () => ({ value: { command: 'ina-insets' } }))
+  on('command.register', (_, e) => ({ value: { command: e.name } }))
   on('turn.start', (_, e) => ({ turnId: e.turnId }))
   on('turn.complete', (_, e) => ({ text: e.answer }))
 
@@ -83,7 +84,7 @@ test('the sprites stand clear of the side panels, as /ina-insets says, and at th
   mock.store(on)
   on('session.start', (_, e) => ({ cwd: e.cwd }))
   on('theme.set', () => ({ value: { isDrawn: true, requestId: 'backdrop' } }))
-  on('command.register', () => ({ value: { command: 'ina-insets' } }))
+  on('command.register', (_, e) => ({ value: { command: e.name } }))
 
   const source = async (surface: 'desktop' | 'mobile') => {
     const ui = await $.ui.mount({ ...BACKDROP, surface })
@@ -144,3 +145,138 @@ test('the scene is left to the app in the terminal', async ($, on) => {
   expect((await ui.find({ type: 'Text' }))?.text).toBe('engine')
   await ui.unmount()
 })
+
+// A store in memory the test can read back, which `mock.store` does not give.
+const memory = (on: Parameters<typeof mock.store>[0], entries: Record<string, unknown> = {}) => {
+  const held = new Map(Object.entries(entries))
+  on('store.get', (_, e) => ({ value: held.get(e.key) }))
+  on('store.set', (_, e) => {
+    held.set(e.key, e.value)
+
+    return { value: undefined }
+  })
+  on('store.delete', (_, e) => {
+    held.delete(e.key)
+
+    return { value: undefined }
+  })
+  on('store.keys', () => ({ value: [...held.keys()] }))
+
+  return held
+}
+
+// What the person types for `/anime-theme`.
+const typed = ($: Engine, args: string) =>
+  $.command.run({ command: 'anime-theme', args, origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 80 } })
+
+test('/anime-theme previews a theme without keeping it, and keep, revert and off settle it', async ($, on) => {
+  const held = memory(on)
+  const sets: { backdrop?: { scene?: string } }[] = []
+  let clears = 0
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('command.register', (_, e) => ({ value: { command: e.name } }))
+  on('theme.set', (_, e) => {
+    sets.push(e)
+
+    return { value: { isDrawn: true, requestId: 'backdrop' } }
+  })
+  on('theme.clear', () => {
+    clears += 1
+
+    return { value: { isDrawn: false, reason: 'cleared' } }
+  })
+  const start = () => $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+
+  // Nothing kept: a session starts on the default, and says so.
+  await start()
+  expect(sets.length).toBe(1)
+  expect(sets[0]?.backdrop?.scene).toBe('ina')
+  expect((await typed($, '')).text).toMatch(/\*\*ina-pixel-dark\*\* \(kept\)/)
+
+  // A preview goes up at once and writes nothing.
+  expect((await typed($, 'preview ina')).text).toContain('Previewing Ina pixel dark')
+  expect(sets.length).toBe(2)
+  expect(held.get('theme')).toBeUndefined()
+  expect((await typed($, '')).text).toContain('previewing')
+
+  expect((await typed($, 'keep')).text).toContain('Kept Ina pixel dark')
+  expect(held.get('theme')).toBe('ina-pixel-dark')
+  expect((await typed($, 'keep')).text).toContain('Nothing to keep')
+  expect((await typed($, 'revert')).text).toContain('Nothing to revert')
+
+  // A name that is no theme changes nothing.
+  expect((await typed($, 'nope')).text).toContain('No theme called "nope"')
+  expect((await typed($, 'preview')).text).toContain('Name a theme')
+  expect(sets.length).toBe(2)
+
+  // Off clears the theme, is kept, and the next session starts without one.
+  expect((await typed($, 'off')).text).toContain("app's own look")
+  expect(clears).toBe(1)
+  expect(held.get('theme')).toBe('off')
+  await start()
+  expect(sets.length).toBe(2)
+
+  // Naming a theme switches to it and keeps it; reverting a preview returns to what was kept.
+  expect((await typed($, 'ina')).text).toContain('kept')
+  expect(sets.length).toBe(3)
+  await typed($, 'off')
+  await typed($, 'preview ina')
+  expect((await typed($, 'revert')).text).toContain("Back to the app's own look")
+  expect(clears).toBe(3)
+
+  // A kept theme that no longer exists falls back to the default.
+  held.set('theme', 'gone')
+  await start()
+  expect(sets.at(-1)?.backdrop?.scene).toBe('ina')
+})
+
+test('the dialog after a preview keeps or reverts it', async ($, on) => {
+  const held = memory(on)
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('command.register', (_, e) => ({ value: { command: e.name } }))
+  on('theme.set', () => ({ value: { isDrawn: true, requestId: 'backdrop' } }))
+  on('theme.clear', () => ({ value: { isDrawn: false, reason: 'cleared' } }))
+  let answer = 'Keep'
+  on('tool.call', { tool: 'AskUserQuestion' }, (_, e) => ({
+    result: { questions: e.questions, answers: { [e.questions[0]?.question ?? '']: answer } },
+  }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+
+  answer = 'Revert'
+  expect((await typed($, 'preview ina')).text).toContain('Back to Ina pixel dark')
+  expect(held.get('theme')).toBeUndefined()
+
+  answer = 'Keep'
+  expect((await typed($, 'preview ina')).text).toContain('Kept Ina pixel dark')
+  expect(held.get('theme')).toBe('ina-pixel-dark')
+})
+
+for (const surface of ['terminal', 'desktop'] as const) {
+  test(`the theme list is drawn with a strip of each theme's colors on the ${surface}`, async ($, on) => {
+    on('ui.render', ($, e) => {
+      const { Text } = $.ui.resolve(e)
+
+      return <Text>engine's own row</Text>
+    })
+    const ui = await $.ui.mount({
+      plugin: 'anime-themes',
+      surface,
+      component: 'CommandOutput',
+      props: { command: 'anime-theme', args: '', text: '**Anime themes**', isErrored: false },
+    })
+    // First comes the strip, led by the theme's darkest color, then the engine's own row.
+    expect((await ui.find({ type: 'Text' }))?.props.color).toBe('#07050c')
+    expect(await ui.find({ text: "engine's own row" })).toBeDefined()
+    await ui.unmount()
+
+    // A preview's own answer is left as the engine draws it.
+    const plain = await $.ui.mount({
+      plugin: 'anime-themes',
+      surface,
+      component: 'CommandOutput',
+      props: { command: 'anime-theme', args: 'preview ina', text: 'Previewing', isErrored: false },
+    })
+    expect((await plain.find({ type: 'Text' }))?.text).toBe("engine's own row")
+    await plain.unmount()
+  })
+}

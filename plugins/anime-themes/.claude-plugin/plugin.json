@@ -1,0 +1,5 @@
+{
+  "name": "anime-themes",
+  "description": "Anime-inspired themes for Claude Code, with /anime-theme to preview and switch between them",
+  "types": "./types/index.d.ts"
+}
