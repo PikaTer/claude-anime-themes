@@ -180,6 +180,7 @@ test('/anime-theme previews a theme without keeping it, and keep, revert and off
 
     return { value: { isDrawn: true, requestId: 'backdrop' } }
   })
+  on('ui.open', () => ({ value: { isPlaced: true } }))
   on('theme.clear', () => {
     clears += 1
 
@@ -191,13 +192,13 @@ test('/anime-theme previews a theme without keeping it, and keep, revert and off
   await start()
   expect(sets.length).toBe(1)
   expect(sets[0]?.backdrop?.scene).toBe('ina')
-  expect((await typed($, '')).text).toMatch(/\*\*ina-pixel-dark\*\* \(kept\)/)
+  expect((await typed($, 'list')).text).toMatch(/\*\*ina-pixel-dark\*\* \(kept\)/)
 
   // A preview goes up at once and writes nothing.
   expect((await typed($, 'preview ina')).text).toContain('Previewing Ina pixel dark')
   expect(sets.length).toBe(2)
   expect(held.get('theme')).toBeUndefined()
-  expect((await typed($, '')).text).toContain('previewing')
+  expect((await typed($, 'list')).text).toContain('previewing')
 
   expect((await typed($, 'keep')).text).toContain('Kept Ina pixel dark')
   expect(held.get('theme')).toBe('ina-pixel-dark')
@@ -221,7 +222,7 @@ test('/anime-theme previews a theme without keeping it, and keep, revert and off
   expect(sets.length).toBe(3)
   await typed($, 'off')
   await typed($, 'preview ina')
-  expect((await typed($, 'revert')).text).toContain("Back to the app's own look")
+  expect((await typed($, 'revert')).text).toContain('Dropped the preview of Ina pixel dark')
   expect(clears).toBe(3)
 
   // A kept theme that no longer exists falls back to the default.
@@ -262,7 +263,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
       plugin: 'anime-themes',
       surface,
       component: 'CommandOutput',
-      props: { command: 'anime-theme', args: '', text: '**Anime themes**', isErrored: false },
+      props: { command: 'anime-theme', args: 'list', text: '**Anime themes**', isErrored: false },
     })
     // First comes the strip, led by the theme's darkest color, then the engine's own row.
     expect((await ui.find({ type: 'Text' }))?.props.color).toBe('#07050c')
@@ -278,5 +279,99 @@ for (const surface of ['terminal', 'desktop'] as const) {
     })
     expect((await plain.find({ type: 'Text' }))?.text).toBe("engine's own row")
     await plain.unmount()
+  })
+}
+
+test('a bare /anime-theme opens the picker, and lists the themes where it cannot', async ($, on) => {
+  memory(on)
+  const opened: { id: string; title?: string; focus?: true; closeOnEscape?: true }[] = []
+  let isPlaced = true
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('command.register', (_, e) => ({ value: { command: e.name } }))
+  on('theme.set', () => ({ value: { isDrawn: true, requestId: 'backdrop' } }))
+  on('ui.open', (_, e) => {
+    opened.push(e)
+
+    return { value: isPlaced ? { isPlaced } : { isPlaced, reason: 'no surface draws panes' } }
+  })
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+
+  const text = (await typed($, '')).text
+  expect(opened).toHaveLength(1)
+  expect(opened[0]).toMatchObject({ id: 'anime-themes', title: 'Anime themes', focus: true, closeOnEscape: true })
+  expect(text).toContain('preview a theme in the panel')
+
+  isPlaced = false
+  const fallback = (await typed($, '')).text
+  expect(fallback).toContain('**ina-pixel-dark**')
+  expect(fallback).toContain('no surface draws panes')
+})
+
+const PICKER = {
+  plugin: 'anime-themes',
+  component: 'Pane',
+  requestId: 'anime-themes',
+  props: { title: 'Anime themes', isFocused: false, bodyColumns: 60, placement: 'dock', scroll: { offset: 0, bodyRows: 20 }, view: {} },
+} as const
+
+for (const surface of ['terminal', 'desktop'] as const) {
+  test(`the picker previews, reverts, applies and closes with its buttons on the ${surface}`, async ($, on) => {
+    const held = memory(on)
+    const sets: unknown[] = []
+    let clears = 0
+    const closed: string[] = []
+    on('session.start', (_, e) => ({ cwd: e.cwd }))
+    on('command.register', (_, e) => ({ value: { command: e.name } }))
+    on('theme.set', (_, e) => {
+      sets.push(e)
+
+      return { value: { isDrawn: true, requestId: 'backdrop' } }
+    })
+    on('theme.clear', () => {
+      clears += 1
+
+      return { value: { isDrawn: false, reason: 'cleared' } }
+    })
+    on('ui.close', (_, e) => {
+      closed.push(e.id)
+
+      return { value: undefined }
+    })
+    await $.session.start({ cwd: '/', surface, isInteractive: true })
+    expect(sets).toHaveLength(1)
+
+    const ui = await $.ui.mount({ ...PICKER, surface })
+    const words = async (pattern: RegExp) => (await ui.find({ type: 'Text', text: pattern }))?.text
+    expect(await words(/Nothing is saved/)).toBeDefined()
+    expect(await ui.find({ type: 'Button', key: 'revert' })).toBeUndefined()
+
+    // Preview: on screen at once, nothing stored, and the panel says so.
+    await ui.press({ key: 'preview-ina-pixel-dark' })
+    expect(sets).toHaveLength(2)
+    expect(held.get('theme')).toBeUndefined()
+    expect(await words(/Previewing Ina pixel dark/)).toBeDefined()
+
+    // Revert puts back what was kept, and the button goes.
+    await ui.press({ key: 'revert' })
+    expect(sets).toHaveLength(3)
+    expect(await ui.find({ type: 'Button', key: 'revert' })).toBeUndefined()
+
+    // Closing with a preview up undoes it.
+    await ui.press({ key: 'preview-ina-pixel-dark' })
+    await ui.press({ key: 'close' })
+    expect(sets).toHaveLength(5)
+    expect(held.get('theme')).toBeUndefined()
+    expect(closed).toEqual(['anime-themes'])
+
+    // Apply keeps the theme and closes the panel.
+    await ui.press({ key: 'apply-ina-pixel-dark' })
+    expect(held.get('theme')).toBe('ina-pixel-dark')
+    expect(closed).toEqual(['anime-themes', 'anime-themes'])
+
+    // Off clears the theme and keeps that for the next session.
+    await ui.press({ key: 'off' })
+    expect(clears).toBe(1)
+    expect(held.get('theme')).toBe('off')
+    await ui.unmount()
   })
 }

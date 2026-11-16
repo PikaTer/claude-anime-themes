@@ -28,18 +28,24 @@ Answer `y` to add the marketplace, then pick a scope. The first theme in the lis
 
 ## Switching themes
 
-Type `/anime-theme` in any session.
+Type `/anime-theme` in any session. It opens a panel with every theme, each with a strip of its colors and two buttons:
+
+- **Preview** puts the theme up live. Nothing is saved yet.
+- **Apply** keeps the theme for later sessions and closes the panel.
+- **Revert** (shown while previewing) goes back to what you had. **Off** returns to the app's own look and stays that way. **Close**, or Esc, closes the panel and undoes a preview you did not apply.
+
+The same actions work as typed commands:
 
 | Command | What it does |
 | --- | --- |
-| `/anime-theme` | Lists the themes, each with a strip of its colors, and which one is kept |
-| `/anime-theme preview <theme>` | Puts the theme up live, then asks Keep or Revert. Nothing is saved until you keep it |
+| `/anime-theme` | Opens the picker panel |
+| `/anime-theme list` | Lists the themes, each with a strip of its colors, and which one is kept |
+| `/anime-theme preview <theme>` | Puts the theme up live, then asks Keep or Revert in a dialog |
 | `/anime-theme <theme>` | Switches to the theme and keeps it for later sessions |
-| `/anime-theme keep` | Keeps the theme you are previewing, if the dialog was dismissed |
-| `/anime-theme revert` | Goes back to what you had before the preview |
+| `/anime-theme keep`, `/anime-theme revert` | Settle a preview that is still up |
 | `/anime-theme off` | Back to the app's own look, and stays that way |
 
-A preview never outlives its session: reload or restart and you are on the kept theme again. Ina's sprites have their own command, `/ina-insets <left> <right>`, to stand clear of the side panels.
+A preview never outlives its session: reload or restart and you are on the kept theme again. Where no panel can open, such as a headless run, `/anime-theme` prints the list instead. (The terminal opens the panel too, but only the desktop and mobile apps draw the theme itself.) Ina's sprites have their own command, `/ina-insets <left> <right>`, to stand clear of the side panels.
 
 ## Staying up to date
 

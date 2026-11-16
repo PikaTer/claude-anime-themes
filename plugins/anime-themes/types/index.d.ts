@@ -30,8 +30,11 @@ export type Scene = {
 /** How far in from the window's left and right edges the sprites stand, in pixels. */
 export type Insets = { left: number; right: number }
 
+/** What the switcher holds: the theme kept (an id, or `off`) and the one being previewed. */
+export type Choice = { kept: string; trying: string | null }
+
 declare module 'claude-code' {
   interface PluginState {
-    'anime-themes': { 'ina-scene': Shaped<Scene>; 'ina-insets': Insets }
+    'anime-themes': { 'ina-scene': Shaped<Scene>; 'ina-insets': Insets; choice: Choice }
   }
 }
