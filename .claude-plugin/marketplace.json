@@ -1,0 +1,14 @@
+{
+  "name": "claude-anime-themes",
+  "owner": { "name": "PikaTer" },
+  "metadata": {
+    "description": "Anime-inspired themes and looks for Claude Code"
+  },
+  "plugins": [
+    {
+      "name": "ina-pixel-dark",
+      "source": "./plugins/ina-pixel-dark",
+      "description": "Purple on black, with a pixel Ina who naps while idle, works in nerd glasses, and a takodachi for every subagent"
+    }
+  ]
+}

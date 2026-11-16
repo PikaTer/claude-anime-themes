@@ -1,0 +1,5 @@
+{
+  "name": "ina-pixel-dark",
+  "description": "Purple on black, with a pixel Ina who naps while idle, works in nerd glasses, and a takodachi for every subagent",
+  "types": "./types/index.d.ts"
+}
