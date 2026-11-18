@@ -193,6 +193,33 @@ test("cat Ina stays the turn, her takodachis have ears, and she's gone after she
   expect(wake(ASLEEP, CAT, 1000).special?.kind).not.toBe('zoltraak')
 })
 
+test('cat Ina says her own lines and nyanifies the shared ones', () => {
+  const cat = wake(ASLEEP, CAT)
+
+  expect(draw(cat)).toContain(speechMarkup('INYA?!?'))
+  expect(draw(cat)).toContain(speechMarkup('NYAH!'))
+  expect(draw(cat)).not.toContain(speechMarkup('WAH!'))
+  // Her takodachis answer each NYAH with one of their own.
+  expect(draw(join(cat, 'a'))).toContain('href="#nyah"')
+  expect(draw(join(cat, 'a'))).not.toContain('href="#wah"')
+  expect(draw(wake(ASLEEP, CAT_AO))).toContain(speechMarkup('AO-NYAN!!'))
+  for (const cue of ['done', 'stop', 'oops', 'ask'] as const) {
+    expect(draw(doze(cat, 'd', cue))).toContain(speechMarkup('BYE NYA~'))
+  }
+  expect(draw(doze(wake(ASLEEP, CAT_AO), 'd', 'done'))).not.toContain(speechMarkup('BYE BYE,\nAO-CHAN~'))
+  // Over many seeds her work lines include hers and nyanified shared ones, never a raw "INA".
+  const said = Array.from({ length: 200 }, (_, i) => draw({ ...cat, ina: 'work', seed: (i * 2654435761) >>> 0 }))
+  expect(said.some(svg => svg.includes(speechMarkup('PURR PURR~')))).toBe(true)
+  expect(said.some(svg => svg.includes(speechMarkup('LOVE THE FLOOR,\nINYA~')))).toBe(true)
+  expect(said.some(svg => svg.includes(speechMarkup('INYA INYA INYA~')))).toBe(true)
+  expect(said.some(svg => svg.includes(speechMarkup('INA INA INA~')))).toBe(false)
+  expect(said.some(svg => svg.includes(speechMarkup('NYAH-T IS THIS?')))).toBe(false)
+  // Nobody else is nyanified.
+  expect(draw(wake(ASLEEP, 't'))).toContain(speechMarkup('WAH!'))
+  expect(draw(join(wake(ASLEEP, 't'), 'a'))).toContain('href="#wah"')
+  expect(draw(wake(ASLEEP, 't'))).not.toContain('id="nyah"')
+})
+
 test('Ao-chan comes on about one wake in five, with either Ina', () => {
   const came = TURNS.filter(id => wake(ASLEEP, id).ao)
 

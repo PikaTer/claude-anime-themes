@@ -4,6 +4,7 @@ import { both, curls, grid, line, mirror, plot, px, round, rows, tentacle } from
 import { COVER, FAREWELL, FR_SAY, FR_WAKE, GLINT, KANA, STAFF, frierenBack, frierenFront, summonFx } from './frieren.js'
 import { AO_BYE, AO_CSS, AO_DEFS, AO_GET, AO_HI, AO_SAY, AO_SPARKS, aoChan } from './ao.js'
 import { FIRE, SHOW, SHOW_SAY, showParts, takoShow } from './special.js'
+import { CAT_AO, CAT_BYE, CAT_SAY, CAT_WAKE, nyan } from './cat.js'
 
 // Ina's head, left half: 42 x 32 once mirrored, down to where her hair hangs
 // free of her cheeks. Its ends are one of HAIR's.
@@ -215,9 +216,14 @@ function lines({ ina, cue, seed, form, ao }) {
   const once = (pool, at) => ({ text: pick(pool), at, kind: 'once' })
   const stay = (pool, at = 0.1) => ({ text: pick(pool), at, kind: 'stay' })
   const frieren = form === 'frieren'
+  const cat = form === 'cat'
 
   if (ina === 'wait') {
-    return [stay(SAY.wait)]
+    return [stay(cat ? SAY.wait.map(nyan) : SAY.wait)]
+  }
+  // Cat Ina's farewell, whatever the ending, as Frieren Ina's is.
+  if (ina === 'doze' && cat) {
+    return [{ text: CAT_BYE, at: 0.1, kind: 'once' }, ...(cue === 'ask' ? [stay(SAY.ask, 4.6)] : [])]
   }
   // Frieren Ina's farewell, whatever the ending; a question waits for regular Ina.
   if (ina === 'doze' && frieren) {
@@ -233,20 +239,25 @@ function lines({ ina, cue, seed, form, ao }) {
   // Ao-chan wakes nerd Ina; Frieren Ina greets her once the summoning is done.
   const woken = frieren
     ? [{ text: FR_WAKE, at: 0.4, kind: 'once', dur: 1 }, ...(ao ? [{ text: AO_GET, at: 2, kind: 'once', dur: 1.8 }] : [])]
-    : ao
+    : cat
+      ? [{ text: CAT_WAKE, at: 0.4, kind: 'once', dur: 1 }, ...(ao ? [{ text: CAT_AO, at: 2, kind: 'once', dur: 1.8 }] : [])]
+      : ao
       ? [{ text: AO_HI, at: 0.6, kind: 'once' }]
       : [once(SAY.wake, 0.6)]
   const first = ina === 'wake' ? woken : SAY[cue] ? [once(SAY[cue], 0.2)] : []
-  const usual = two(SAY.work, seed)
-  // Hers come up two times in three.
-  const own = two(FR_SAY, seed >>> 12)
-  const theirs = frieren ? usual.map((line, i) => ((seed >>> (20 + 4 * i)) % 3 < 2 ? own[i] : line)) : usual
+  // Cat Ina has her own NYA-T IS THIS?: the shared one would come out the same.
+  const usual = two(cat ? SAY.work.filter(line => line !== 'WAH-T IS THIS?') : SAY.work, seed)
+  // Hers come up two times in three; the shared ones she says nyanified.
+  const own = two(cat ? CAT_SAY : FR_SAY, seed >>> 12)
+  const speak = cat ? nyan : line => line
+  const theirs =
+    frieren || cat ? usual.map((line, i) => ((seed >>> (20 + 4 * i)) % 3 < 2 ? own[i] : speak(line))) : usual
   // With Ao-chan out, the second line is for her half the time.
-  const said = ao && (seed >>> 28) % 2 === 0 ? [theirs[0], AO_SAY[(seed >>> 16) % AO_SAY.length]] : theirs
+  const said = ao && (seed >>> 28) % 2 === 0 ? [theirs[0], speak(AO_SAY[(seed >>> 16) % AO_SAY.length])] : theirs
 
   return [
-    ...first,
-    { text: 'WAH!', at: 4, kind: 'loop' },
+    ...(cat ? first.map(slot => (slot.text === CAT_WAKE || slot.text === CAT_AO ? slot : { ...slot, text: nyan(slot.text) })) : first),
+    { text: speak('WAH!'), at: 4, kind: 'loop' },
     { text: said[0], at: 12, kind: 'loop' },
     { text: said[1], at: 20, kind: 'loop' },
   ]
@@ -254,7 +265,8 @@ function lines({ ina, cue, seed, form, ao }) {
 
 /** Characters of Ina's lines the pixel font cannot draw: empty when every line can be drawn. */
 export function missingGlyphs() {
-  const all = [...Object.values(SAY).flat(), ...FR_SAY, FR_WAKE, FAREWELL, ...AO_SAY, AO_HI, AO_GET, AO_BYE, 'WAH!', ...Object.values(SHOW_SAY)]
+  const shared = [...Object.values(SAY).flat(), ...AO_SAY, 'WAH!']
+  const all = [...shared, ...shared.map(nyan), ...FR_SAY, FR_WAKE, FAREWELL, AO_HI, AO_GET, AO_BYE, ...CAT_SAY, CAT_WAKE, CAT_AO, CAT_BYE, ...Object.values(SHOW_SAY)]
 
   return [...new Set(all.join('').replace(/[\n{}]/g, ''))].filter(char => FONT[char] === undefined)
 }
@@ -517,12 +529,15 @@ const INK =
   `<g class="i1">${puff([[12, 12, 4], [8, 14, 3], [16, 11, 3]], -1, -1)}</g>` +
   `<g class="i2">${puff([[12, 11, 7], [5, 14, 5], [20, 13, 5], [8, 6, 4], [17, 5, 4], [13, 18, 4]], -1, -1)}</g>`
 
-const WAH_ECHO = (() => {
-  const rows = bubble('WAH!', 11)
+// Over its halo, so it stays clear of the takodachi above.
+const echo = text => {
+  const rows = bubble(text, 11)
 
-  // Over its halo, so it stays clear of the takodachi above.
   return px(rows, 12 - Math.floor(rows[1].length / 2), 3 - rows.length)
-})()
+}
+const WAH_ECHO = echo('WAH!')
+// Cat Ina's takodachis answer her NYAHs: drawn only while she is out.
+const NYAH_ECHO = `<g id="nyah">${echo('NYAH!')}</g>`
 
 const DEFS =
   `<g id="staff">${STAFF}</g><g id="tako">${TAKO}</g><g id="ring">${RING}</g><g id="grab">${GRAB}</g><g id="wah">${WAH_ECHO}</g>${AO_DEFS}${MARK_DEFS}`
@@ -541,7 +556,7 @@ function hash(text) {
 }
 
 /** One takodachi where it sits, with what its coming or going needs, and its WAHs. */
-function takodachi(tako, wahs, show) {
+function takodachi(tako, wahs, show, cat) {
   const how = tako.phase === 'in' ? tako.enter : tako.phase === 'out' ? tako.exit : ''
   const phase = tako.phase === 'in' ? `in e-${how}` : tako.phase === 'out' ? `out x-${how}` : 'on'
   // It answers each of Ina's WAHs a beat later, with a hop.
@@ -563,7 +578,7 @@ function takodachi(tako, wahs, show) {
     (part?.by ?? '') +
     (how === 'ink' ? INK : '') +
     echoes
-      .map(slot => `<use href="#wah" class="say" style="${plays(slot, (slot.at + beat).toFixed(2), 'say', 'on 1.6s')}"/>`)
+      .map(slot => `<use href="#${cat ? 'nyah' : 'wah'}" class="say" style="${plays(slot, (slot.at + beat).toFixed(2), 'say', 'on 1.6s')}"/>`)
       .join('') +
     `</g></g></svg>`
   )
@@ -700,10 +715,11 @@ export function draw(scene, { left = 0, right = 0 } = {}) {
   // A show holds back what she would say over it, and her dozing off.
   const hold = show === null ? 0 : show.x + SHOW
   const said = waiting(lines(scene), scene, hold)
-  const wahs = said.filter(slot => slot.kind !== 'stay' && slot.text.includes('WAH'))
+  const wahs = said.filter(slot => slot.kind !== 'stay' && (slot.text.includes('WAH') || slot.text.includes('NYAH')))
   // She finishes her line before she dozes off.
   // Frieren Ina is sent back first, and regular Ina has a moment awake.
-  const lull = (scene.form === 'frieren' ? 5 : scene.cue === 'ask' ? 3 : 2.4) + hold
+  // Cat Ina turns back first too, a little quicker.
+  const lull = (scene.form === 'frieren' ? 5 : scene.form === 'cat' ? 4 : scene.cue === 'ask' ? 3 : 2.4) + hold
   const state = `${scene.ina}${scene.form === 'frieren' ? ' f' : ''}${scene.ao ? ' a' : ''}${show === null ? '' : ` s-${show.kind}`}`
   const parts = show === null ? null : showParts(show.kind, { say: overHead, mouth: MOUTH_OPEN, nerd: scene.form !== 'frieren', aim: show.aim })
   // When Ao-chan rises: as nerd Ina wakes, or once Frieren Ina is summoned.
@@ -714,14 +730,14 @@ export function draw(scene, { left = 0, right = 0 } = {}) {
   // style fills the view where a surface puts the markup in a page of its own.
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" style="position:fixed;top:0;left:0;width:100vw;height:100vh${show === null ? '' : `;--x:${show.x.toFixed(2)}s`}" shape-rendering="crispEdges"><style>${CSS}${parts?.css ?? ''}</style>` +
-    `<defs><radialGradient id="glow"><stop offset="0" stop-color="#3a2670" stop-opacity=".5"/><stop offset="1" stop-color="#3a2670" stop-opacity="0"/></radialGradient>${DEFS}${parts?.defs ?? ''}</defs>` +
+    `<defs><radialGradient id="glow"><stop offset="0" stop-color="#3a2670" stop-opacity=".5"/><stop offset="1" stop-color="#3a2670" stop-opacity="0"/></radialGradient>${DEFS}${scene.form === 'cat' ? NYAH_ECHO : ''}${parts?.defs ?? ''}</defs>` +
     `<rect width="100%" height="100%" fill="#07050c"/>` +
     `<svg x="100%" y="50%" overflow="visible"><circle cx="${-right - 135}" r="1000" fill="url(#glow)"/></svg>` +
     `<g class="${scene.ina}">${STARS}</g>${parts?.under ?? ''}` +
     `<svg x="100%" overflow="visible"><g transform="translate(${-right} 0)"><g class="ina-s">${TENTACLE_HIGH}</g></g></svg>` +
     `<svg x="100%" y="100%" overflow="visible"><g transform="translate(${-right} 0)"><g class="ina-s">${TENTACLE_LOW}</g></g></svg>` +
     // The takodachis' own left edge: what reaches past it is cut, so a tentacle comes out from behind it.
-    `<svg x="${left}">${scene.takos.map(tako => takodachi(tako, wahs, show)).join('')}</svg>` +
+    `<svg x="${left}">${scene.takos.map(tako => takodachi(tako, wahs, show, scene.form === 'cat')).join('')}</svg>` +
     `<svg x="100%" y="50%" overflow="visible"><g transform="translate(${-right} 0)"><g class="ina-s"><g transform="translate(-52 -16)" class="${state}" style="--d:${lull}s;--a:${rises}s;--h:${hold}s">${ina(scene, said, wahs, parts, hold)}</g></g></g></svg>` +
     `${parts?.over ?? ''}</svg>`
   )
