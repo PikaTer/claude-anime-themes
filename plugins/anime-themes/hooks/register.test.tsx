@@ -220,6 +220,45 @@ test('cat Ina says her own lines and nyanifies the shared ones', () => {
   expect(draw(wake(ASLEEP, 't'))).not.toContain('id="nyah"')
 })
 
+test("the scene draws cat Ina's transformation, and none of it for anyone else", () => {
+  const cat = wake(ASLEEP, CAT)
+  const css = (svg: string) => svg.match(/<style>(.*?)<\/style>/)?.[1] ?? ''
+
+  for (const part of ['class="ch"', 'class="ce"', 'class="heart"', 'class="sigil"', 'class="cs"', 'class="csp"']) {
+    expect(draw(cat)).toContain(part)
+  }
+  expect(draw(cat)).not.toContain('class="glasses"')
+  expect(draw(cat)).toContain('class="wake c"')
+  // One ear, then the other.
+  expect(css(draw(cat))).toMatch(/\.c\.wake \.cl\{[^}]*1\.3s/)
+  expect(css(draw(cat))).toMatch(/\.c\.wake \.cr\{[^}]*1\.7s/)
+  // At rest: her heart, no round circle, and nothing of hers moves on a question.
+  const held = draw(ask(cat, 'q'))
+  expect(held).toContain('class="heart"')
+  expect(held).not.toContain('class="sigil"')
+  expect(css(held)).not.toMatch(/\.c\.wait [^{]*\{[^}]*animation/)
+  // Redrawn mid-arrival, she is simply there.
+  expect(draw(join(cat, 'a'))).toContain('class="work c"')
+  expect(draw(join(cat, 'a'))).not.toContain('class="sigil"')
+  expect(draw(join(cat, 'a'))).not.toContain('class="csp"')
+  // Dozing, the round circle comes back.
+  expect(draw(doze(cat, 'd', 'done'))).toContain('class="sigil"')
+  // Never for nerd or Frieren Ina.
+  for (const svg of [draw(wake(ASLEEP, 't')), draw(wake(ASLEEP, FRIEREN)), draw(ASLEEP)]) {
+    for (const part of ['class="ch"', 'class="heart"', '.cl{']) {
+      expect(svg).not.toContain(part)
+    }
+  }
+})
+
+test('cat Ina keeps her heart circle inside its budget', () => {
+  const svg = draw({ ...wake(ASLEEP, CAT), ina: 'work' })
+  const at = svg.indexOf('class="heart"')
+
+  expect(at).toBeGreaterThan(0)
+  expect(svg.indexOf('</g>', at) - at).toBeLessThan(9000)
+})
+
 test('Ao-chan comes on about one wake in five, with either Ina', () => {
   const came = TURNS.filter(id => wake(ASLEEP, id).ao)
 
@@ -285,9 +324,9 @@ test('Ao-chan glows in, blinks from the start, and keeps her sparkles off the bu
   // The flutter lives in a <use>d copy: styled on its own.
   expect(css).toMatch(/(^|\})\.af\{animation/)
   // The head bobs from 1.2 s; nerd Ina hops once more for her, over it. One
-  // hop, and none for Frieren Ina, whose summoning is busy enough: more trips
-  // the desktop app's flash guard, which holds the scene still.
-  expect(css).toMatch(/\.a\.wake:not\(\.f\) \.head\{animation:bob 1s steps\(1\) 1\.2s infinite,hop \.3s steps\(3\) calc\(var\(--a\) \+ \.4s\)\}/)
+  // hop, and none for Frieren or cat Ina, whose transformations are busy enough:
+  // more trips the desktop app's flash guard, which holds the scene still.
+  expect(css).toMatch(/\.a\.wake:not\(\.f\):not\(\.c\) \.head\{animation:bob 1s steps\(1\) 1\.2s infinite,hop \.3s steps\(3\) calc\(var\(--a\) \+ \.4s\)\}/)
   expect(svg.indexOf('class="asp"')).toBeLessThan(svg.indexOf(speechMarkup('AO-CHAN!!')))
   // Her glow stays about her own width.
   expect(svg).toMatch(/class="ag"[^>]*rx="10"/)

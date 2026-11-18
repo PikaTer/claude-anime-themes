@@ -4,7 +4,7 @@ import { both, curls, grid, line, mirror, plot, px, round, rows, tentacle } from
 import { COVER, FAREWELL, FR_SAY, FR_WAKE, GLINT, KANA, STAFF, frierenBack, frierenFront, summonFx } from './frieren.js'
 import { AO_BYE, AO_CSS, AO_DEFS, AO_GET, AO_HI, AO_SAY, AO_SPARKS, aoChan } from './ao.js'
 import { FIRE, SHOW, SHOW_SAY, showParts, takoShow } from './special.js'
-import { CAT_AO, CAT_BYE, CAT_SAY, CAT_WAKE, nyan } from './cat.js'
+import { CAT_AO, CAT_BYE, CAT_CSS, CAT_HEAD, CAT_SAY, CAT_SPARKS, CAT_WAKE, HEART, nyan } from './cat.js'
 
 // Ina's head, left half: 42 x 32 once mirrored, down to where her hair hangs
 // free of her cheeks. Its ends are one of HAIR's.
@@ -421,14 +421,21 @@ function ina(scene, said, wahs, parts, hold) {
   // side of the summoning. The light and the tentacles only as she comes and goes.
   const summoning =
     frieren && scene.ina === 'wake' ? summonFx(0, true) : frieren && scene.ina === 'doze' ? summonFx(2.4 + hold, false) : ''
+  // Cat Ina is regular Ina, no glasses, with her ears and faces over her.
+  const cat = scene.form === 'cat'
   const heads = frieren
     ? `<g class="nh">${headArt(scene.hair)}</g><g class="fh">${frierenBack()}${AHOGE}${headOf(scene.hair)}${frierenFront(scene.face)}</g>`
-    : `<g class="nh">${headArt(scene.hair)}${GLASSES}</g>`
+    : cat
+      ? `<g class="nh">${headArt(scene.hair)}</g>${CAT_HEAD}`
+      : `<g class="nh">${headArt(scene.hair)}${GLASSES}</g>`
+  // Her heart circle while she is out; the round one only as it turns into it and back.
+  const turning = scene.ina === 'wake' || scene.ina === 'doze'
+  const circle = cat ? `${turning ? `<g class="sigil">${SIGIL}</g>` : ''}<g class="heart">${HEART}</g>` : `<g class="sigil">${SIGIL}</g>`
 
   const head = `<g class="head">${heads}${mouths}${parts?.face ?? ''}</g>`
 
   return (
-    `<g class="sigil">${SIGIL}</g>${summoning}${aoChan(scene, wahs, { plays, ink: INK })}${parts?.back ?? ''}<g class="zzz">${ZZZ}</g>` +
+    `${circle}${summoning}${cat && turning ? CAT_SPARKS : ''}${aoChan(scene, wahs, { plays, ink: INK })}${parts?.back ?? ''}<g class="zzz">${ZZZ}</g>` +
     // Her greeting's sparkles, under the bubbles.
     `${scene.ao && scene.ina === 'wake' ? AO_SPARKS : ''}${bubbles}${parts?.front ?? ''}` +
     `${parts ? `<g class="v-hd">${head}</g>` : head}${frieren && scene.ina === 'doze' ? COVER : ''}`
@@ -720,16 +727,16 @@ export function draw(scene, { left = 0, right = 0 } = {}) {
   // Frieren Ina is sent back first, and regular Ina has a moment awake.
   // Cat Ina turns back first too, a little quicker.
   const lull = (scene.form === 'frieren' ? 5 : scene.form === 'cat' ? 4 : scene.cue === 'ask' ? 3 : 2.4) + hold
-  const state = `${scene.ina}${scene.form === 'frieren' ? ' f' : ''}${scene.ao ? ' a' : ''}${show === null ? '' : ` s-${show.kind}`}`
+  const state = `${scene.ina}${scene.form === 'frieren' ? ' f' : scene.form === 'cat' ? ' c' : ''}${scene.ao ? ' a' : ''}${show === null ? '' : ` s-${show.kind}`}`
   const parts = show === null ? null : showParts(show.kind, { say: overHead, mouth: MOUTH_OPEN, nerd: scene.form !== 'frieren', aim: show.aim })
-  // When Ao-chan rises: as nerd Ina wakes, or once Frieren Ina is summoned.
-  const rises = scene.form === 'frieren' ? 1.9 : 0.2
+  // When Ao-chan rises: as nerd Ina wakes, or once Frieren or cat Ina is summoned.
+  const rises = scene.form === 'nerd' ? 0.2 : 1.9
 
   // No viewBox on the root: one unit is one CSS pixel, so the sprites keep whole
   // pixels at any window size, pinned to the edges by the nested svgs. The
   // style fills the view where a surface puts the markup in a page of its own.
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" style="position:fixed;top:0;left:0;width:100vw;height:100vh${show === null ? '' : `;--x:${show.x.toFixed(2)}s`}" shape-rendering="crispEdges"><style>${CSS}${parts?.css ?? ''}</style>` +
+    `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" style="position:fixed;top:0;left:0;width:100vw;height:100vh${show === null ? '' : `;--x:${show.x.toFixed(2)}s`}" shape-rendering="crispEdges"><style>${CSS}${scene.form === 'cat' ? CAT_CSS : ''}${parts?.css ?? ''}</style>` +
     `<defs><radialGradient id="glow"><stop offset="0" stop-color="#3a2670" stop-opacity=".5"/><stop offset="1" stop-color="#3a2670" stop-opacity="0"/></radialGradient>${DEFS}${scene.form === 'cat' ? NYAH_ECHO : ''}${parts?.defs ?? ''}</defs>` +
     `<rect width="100%" height="100%" fill="#07050c"/>` +
     `<svg x="100%" y="50%" overflow="visible"><circle cx="${-right - 135}" r="1000" fill="url(#glow)"/></svg>` +

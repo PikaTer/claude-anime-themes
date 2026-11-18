@@ -144,7 +144,7 @@ export const AO_CSS = `
 .ai .i1{animation:on .15s calc(var(--h) + 1s),on .15s calc(var(--h) + 1.45s)}
 .ai .i2{animation:on .3s calc(var(--h) + 1.15s)}
 .a.wake .asp{animation:twinkle .9s steps(3) calc(var(--a) + .4s) 2}
-.a.wake:not(.f) .head{animation:bob 1s steps(1) 1.2s infinite,hop .3s steps(3) calc(var(--a) + .4s)}
+.a.wake:not(.f):not(.c) .head{animation:bob 1s steps(1) 1.2s infinite,hop .3s steps(3) calc(var(--a) + .4s)}
 @keyframes aorise{0%{transform:translateY(10px);opacity:0}15%{opacity:1}60%{transform:translateY(-3px)}80%,to{transform:none}}
 @keyframes aosink{from{opacity:1}to{transform:translateY(8px);opacity:0}}
 @keyframes aoblink{0%,3%{opacity:1}4%,to{opacity:0}}
