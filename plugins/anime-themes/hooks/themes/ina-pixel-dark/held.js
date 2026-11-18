@@ -58,12 +58,13 @@ const ART = {
   lowWrap: rising(lowWrap.art),
   highWrap: hanging(highWrap.art),
 }
-// Where each held takodachi's 24 x 20 grid goes, in whole pixels of Ina's.
-// Wrapped, it is centred on the loop at its usual size; riding, it is Ina's size,
-// sat on the low arch or hung from the high one.
+// Where each held takodachi goes, in whole pixels of Ina's. Wrapped, its middle
+// (12, 11 of its 24 x 20 grid) sits on the loop's, shrunk by the scene's `.hk`
+// to its usual size; riding, it is Ina's size, sat on the low arch or hung from
+// the high one.
 const AT = {
-  lowWrap: `translate(${Math.round(lowWrap.x - 7 - 12 * 0.8)} ${Math.round(lowWrap.y - 1 - 11 * 0.8)}) scale(.8)`,
-  highWrap: `translate(${Math.round(highWrap.x - 7 - 12 * 0.8)} ${Math.round(-highWrap.y - 11 * 0.8)}) scale(.8)`,
+  lowWrap: `translate(${Math.round(lowWrap.x - 7)} ${Math.round(lowWrap.y - 1)})`,
+  highWrap: `translate(${Math.round(highWrap.x - 7)} ${Math.round(-highWrap.y)})`,
   lowRide: 'translate(-54 -72)',
   highRide: 'translate(-39 28)',
 }
@@ -80,8 +81,9 @@ export function tentacles(hold, { awake = false, ears = false } = {}) {
 
     return `<g class="hold" transform="${at}">${awake ? `<g class="on"><g class="bob">${body}</g></g>` : body}</g>`
   }
-  const low = { none: ART.low, wrap: tako(AT.lowWrap) + ART.lowWrap, ride: ART.low + tako(AT.lowRide) }
-  const high = { none: ART.high, wrap: tako(AT.highWrap) + ART.highWrap, ride: tako(AT.highRide, ARMS_UP) + ART.high }
+  const wrapped = at => tako(at).replace(/^(<g[^>]*>)(.*)<\/g>$/, '$1<g class="hk"><g transform="translate(-12 -11)">$2</g></g></g>')
+  const low = { none: ART.low, wrap: wrapped(AT.lowWrap) + ART.lowWrap, ride: ART.low + tako(AT.lowRide) }
+  const high = { none: ART.high, wrap: wrapped(AT.highWrap) + ART.highWrap, ride: tako(AT.highRide, ARMS_UP) + ART.high }
 
   return { high: high[hold.high], low: low[hold.low] }
 }

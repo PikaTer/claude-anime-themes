@@ -964,8 +964,9 @@ test('a wrapped tentacle curls round its takodachi; a ridden one is unchanged', 
     expect(count(part, 'class="hold"')).toBe(1)
     expect(count(part, TAKO)).toBe(1)
   }
-  expect(wrap.low).toContain('scale(.8)')
-  expect(ride.low).not.toContain('scale(.8)')
+  // Wrapped, shrunk to a takodachi's usual size; riding, Ina's own.
+  expect(wrap.low).toContain('class="hk"')
+  expect(ride.low).not.toContain('class="hk"')
 })
 
 test('the tentacles hold what was rolled when the theme loaded, and nothing else changes', () => {
@@ -1014,4 +1015,16 @@ test('relative paths draw the very pixels plain ones do', () => {
   expect(cells(pxr(rows, -60, -110))).toEqual(cells(px(rows, -60, -110)))
   expect(cells(pxr(rows, -60, -110)).length).toBeGreaterThan(500)
   expect(pxr(rows, -60, -110).length).toBeLessThan(px(rows, -60, -110).length * 0.9)
+})
+
+test('a wrapped takodachi keeps whole pixels, on a desktop and on a phone', () => {
+  const svg = draw({ ...wake(ASLEEP, 't'), ina: 'work' }, undefined, WRAP)
+  const phone = svg.slice(svg.indexOf('@media (max-width:700px)'))
+  const scale = (css: string) => Number(css.match(/\.hk\{transform:scale\(([\d.]+)\)\}/)?.[1])
+
+  // Ina's pixels are 5 wide, 3 on a phone: the takodachi's must come out 4 and 2, as on the left.
+  expect(Math.round(5 * scale(svg) * 100) / 100).toBe(4)
+  expect(Math.round(3 * scale(phone) * 100) / 100).toBe(2)
+  expect(count(svg, 'class="hk"')).toBe(2)
+  expect(svg).not.toContain('scale(.8)"')
 })

@@ -593,8 +593,8 @@ function takodachi(tako, wahs, show, cat) {
 }
 
 const CSS = `
-.ina-s{transform:scale(5)}.tako-s{transform:scale(4)}
-@media (max-width:700px){.ina-s{transform:scale(3)}.tako-s{transform:scale(2)}}
+.ina-s{transform:scale(5)}.tako-s{transform:scale(4)}.hk{transform:scale(.8)}
+@media (max-width:700px){.ina-s{transform:scale(3)}.tako-s{transform:scale(2)}.hk{transform:scale(.6667)}}
 .glasses,.open,.half,.mo,.say,.sb,.out,.p-ring,.i1,.i2{opacity:0}
 .sigil{opacity:.5}
 .wake .sigil,.work .sigil,.wait .sigil{opacity:1}
