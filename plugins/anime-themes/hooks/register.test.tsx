@@ -2,7 +2,7 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 
 import { lands } from './themes/ina-pixel-dark'
-import { ASLEEP, ask, carry, cheer, doze, draw, join, leave, missingGlyphs, rest, resume, speechMarkup, wake } from './themes/ina-pixel-dark/scene.js'
+import { ASLEEP, HOLD, ask, carry, cheer, doze, draw, join, leave, missingGlyphs, rest, resume, speechMarkup, wake } from './themes/ina-pixel-dark/scene.js'
 import { showParts } from './themes/ina-pixel-dark/special.js'
 import { CAT_SAY } from './themes/ina-pixel-dark/cat.js'
 import { rollHold, tentacles } from './themes/ina-pixel-dark/held.js'
@@ -19,6 +19,8 @@ const BACKDROP = {
 const TAKO = '<use href="#tako"/>'
 const ECHO = '<use href="#wah"'
 const count = (text: string, part: string) => text.split(part).length - 1
+// The subagents' takodachis: not counting any a corner tentacle holds.
+const takos = (svg: string) => count(svg, TAKO) - count(svg, 'class="hold"')
 
 // What the corner tentacles hold: nothing, or a takodachi each, wrapped.
 const NONE = { high: 'none', low: 'none' } as const
@@ -56,7 +58,7 @@ test('Ina sleeps still, works the main turn, waits on a question, and each subag
   // Idle costs nothing: asleep, no rule and no element of the scene animates.
   expect(asleep).not.toMatch(/\.sleep[^{]*\{[^}]*animation/)
   expect(asleep).not.toMatch(/style="animation/)
-  expect(asleep).not.toContain(TAKO)
+  expect(takos(asleep)).toBe(0)
 
   await $.turn.start({ text: 'hi', turnId: 't1' })
   expect(await source()).toContain('class="wake"')
@@ -66,7 +68,7 @@ test('Ina sleeps still, works the main turn, waits on a question, and each subag
   const busy = await source()
   // The wake transition is not replayed by a later redraw.
   expect(busy).toContain('class="work"')
-  expect(count(busy, TAKO)).toBe(2)
+  expect(takos(busy)).toBe(2)
   // Both takodachis answer each WAH of hers: the looping one at least.
   expect(count(busy, ECHO)).toBeGreaterThan(1)
   expect(count(busy, ECHO) % 2).toBe(0)
@@ -84,7 +86,7 @@ test('Ina sleeps still, works the main turn, waits on a question, and each subag
   const dozing = await source()
   expect(dozing).toContain('class="doze"')
   // A takodachi that left is gone by the next redraw.
-  expect(dozing).not.toContain(TAKO)
+  expect(takos(dozing)).toBe(0)
   // The turn ended on a question: her line stands while she sleeps.
   expect(dozing).toContain('class="say" style="opacity:1"')
 })
@@ -961,4 +963,32 @@ test('a wrapped tentacle curls round its takodachi; a ridden one is unchanged', 
   }
   expect(wrap.low).toContain('scale(.8)')
   expect(ride.low).not.toContain('scale(.8)')
+})
+
+test('the tentacles hold what was rolled when the theme loaded, and nothing else changes', () => {
+  expect(draw(ASLEEP)).toBe(draw(ASLEEP, undefined, HOLD))
+  const crowd = ['a1', 'a2', 'a3'].reduce(join, { ...wake(ASLEEP, 't'), ina: 'work' as const })
+  const held = draw(crowd, undefined, WRAP)
+  const bare = draw(crowd, undefined, NONE)
+
+  expect(count(held, 'class="hold"')).toBe(2)
+  expect(count(draw(crowd, undefined, { high: 'ride', low: 'none' }), 'class="hold"')).toBe(1)
+  expect(count(bare, 'class="hold"')).toBe(0)
+  // Not a subagent's: the takodachis on the left and their WAHs are as with none held.
+  expect(count(held, TAKO)).toBe(crowd.takos.length + 2)
+  expect(takos(held)).toBe(takos(bare))
+  expect(count(held, ECHO)).toBe(count(bare, ECHO))
+})
+
+test('held takodachis bob while Ina is up, hold still asleep, and wear cat ears with cat Ina', () => {
+  const held = (svg: string) => svg.slice(svg.indexOf('class="hold"'), svg.indexOf('class="hold"') + 200)
+
+  expect(held(draw(ASLEEP, undefined, WRAP))).not.toContain('class="bob"')
+  expect(held(draw({ ...wake(ASLEEP, 't'), ina: 'work' }, undefined, WRAP))).toContain('class="bob"')
+  const cat = draw({ ...wake(ASLEEP, CAT), ina: 'work' }, undefined, WRAP)
+  expect(cat).toContain('id="cear"')
+  expect(count(cat, '<use href="#cear"/>')).toBe(2)
+  expect(draw({ ...wake(ASLEEP, 't'), ina: 'work' }, undefined, WRAP)).not.toContain('#cear')
+  // Nothing held, no ears drawn for it.
+  expect(draw({ ...wake(ASLEEP, CAT), ina: 'work' }, undefined, NONE)).not.toContain('id="cear"')
 })

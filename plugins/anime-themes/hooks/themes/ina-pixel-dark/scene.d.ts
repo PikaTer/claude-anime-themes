@@ -1,10 +1,17 @@
 import type { Ending, Insets, Scene } from '../../../types'
+import type { Hold } from './held.js'
+
+export type { Grip, Hold } from './held.js'
 
 /**
  * The whole backdrop for a scene state, as SVG markup. Asleep or waiting, Ina
- * does not move. `insets` keep the sprites clear of the app's side panels.
+ * does not move. `insets` keep the sprites clear of the app's side panels;
+ * `hold` is what the corner tentacles hold, `HOLD` unless given.
  */
-export function draw(scene: Scene, insets?: Insets): string
+export function draw(scene: Scene, insets?: Insets, hold?: Hold): string
+
+/** What the corner tentacles hold, rolled once as the theme loads. */
+export const HOLD: Hold
 
 export const ASLEEP: Scene
 

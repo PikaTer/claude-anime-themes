@@ -1,6 +1,7 @@
 // The pixel art, the scene's SVG and the scene's state changes. Pure: no `$`.
 
-import { both, curls, grid, line, mirror, plot, px, round, rows, tentacle } from './pixels.js'
+import { both, grid, line, mirror, plot, px, round, rows, tentacle } from './pixels.js'
+import { rollHold, tentacles } from './held.js'
 import { COVER, FAREWELL, FR_SAY, FR_WAKE, GLINT, KANA, STAFF, frierenBack, frierenFront, summonFx } from './frieren.js'
 import { AO_BYE, AO_CSS, AO_DEFS, AO_GET, AO_HI, AO_SAY, AO_SPARKS, aoChan } from './ao.js'
 import { FIRE, SHOW, SHOW_SAY, SHOW_SAY_CAT, showParts, takoShow } from './special.js'
@@ -296,10 +297,6 @@ const SIGIL = (() => {
   return px(rows(cells), 21 - c, 16 - c)
 })()
 
-const low = tentacle(110, curls(0.4, 7))
-const high = tentacle(70, curls(0.35, 8))
-const TENTACLE_LOW = px(low.rows, -low.root - 7, -low.rows.length)
-const TENTACLE_HIGH = px(high.rows.toReversed(), -high.root - 7, 0)
 
 // Ina's marks, scattered over the sky: a haloed takodachi, a four-point star,
 // a heart and a clover, and a small star to fill between them.
@@ -394,6 +391,10 @@ const STARS = (() => {
 
   return stars
 })()
+
+// What the corner tentacles hold, rolled once as the theme loads: like the
+// marks, it holds till the theme is loaded again.
+export const HOLD = rollHold()
 
 const headArt = hair =>
   `${AHOGE}${headOf(hair)}<g class="closed">${CLOSED}</g><g class="half">${HALF}</g><g class="open">${OPEN}</g>${MOUTH}`
@@ -717,7 +718,7 @@ function playing({ special, ina }) {
  * `left` and `right` are how far in from the window's edges the sprites stand,
  * in pixels: clear of side panels drawn over the backdrop.
  */
-export function draw(scene, { left = 0, right = 0 } = {}) {
+export function draw(scene, { left = 0, right = 0 } = {}, grips = HOLD) {
   const show = playing(scene)
   // A show holds back what she would say over it, and her dozing off.
   const hold = show === null ? 0 : show.x + SHOW
@@ -733,18 +734,20 @@ export function draw(scene, { left = 0, right = 0 } = {}) {
   const parts = show === null ? null : showParts(show.kind, { say: overHead, mouth: MOUTH_OPEN, nerd: scene.form === 'nerd', cat: scene.form === 'cat', aim: show.aim })
   // When Ao-chan rises: as nerd Ina wakes, or once Frieren or cat Ina is summoned.
   const rises = scene.form === 'nerd' ? 0.2 : 1.9
+  const arms = tentacles(grips, { awake: working(scene), ears: scene.form === 'cat' })
+  const held = grips.high !== 'none' || grips.low !== 'none'
 
   // No viewBox on the root: one unit is one CSS pixel, so the sprites keep whole
   // pixels at any window size, pinned to the edges by the nested svgs. The
   // style fills the view where a surface puts the markup in a page of its own.
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" style="position:fixed;top:0;left:0;width:100vw;height:100vh${show === null ? '' : `;--x:${show.x.toFixed(2)}s`}" shape-rendering="crispEdges"><style>${CSS}${scene.form === 'cat' ? CAT_CSS : ''}${parts?.css ?? ''}</style>` +
-    `<defs><radialGradient id="glow"><stop offset="0" stop-color="#3a2670" stop-opacity=".5"/><stop offset="1" stop-color="#3a2670" stop-opacity="0"/></radialGradient>${DEFS}${scene.form === 'cat' ? NYAH_ECHO : ''}${scene.takos.some(tako => tako.ears) ? TAKO_EARS : ''}${parts?.defs ?? ''}</defs>` +
+    `<defs><radialGradient id="glow"><stop offset="0" stop-color="#3a2670" stop-opacity=".5"/><stop offset="1" stop-color="#3a2670" stop-opacity="0"/></radialGradient>${DEFS}${scene.form === 'cat' ? NYAH_ECHO : ''}${scene.takos.some(tako => tako.ears) || (scene.form === 'cat' && held) ? TAKO_EARS : ''}${parts?.defs ?? ''}</defs>` +
     `<rect width="100%" height="100%" fill="#07050c"/>` +
     `<svg x="100%" y="50%" overflow="visible"><circle cx="${-right - 135}" r="1000" fill="url(#glow)"/></svg>` +
     `<g class="${scene.ina}">${STARS}</g>${parts?.under ?? ''}` +
-    `<svg x="100%" overflow="visible"><g transform="translate(${-right} 0)"><g class="ina-s">${TENTACLE_HIGH}</g></g></svg>` +
-    `<svg x="100%" y="100%" overflow="visible"><g transform="translate(${-right} 0)"><g class="ina-s">${TENTACLE_LOW}</g></g></svg>` +
+    `<svg x="100%" overflow="visible"><g transform="translate(${-right} 0)"><g class="ina-s">${arms.high}</g></g></svg>` +
+    `<svg x="100%" y="100%" overflow="visible"><g transform="translate(${-right} 0)"><g class="ina-s">${arms.low}</g></g></svg>` +
     // The takodachis' own left edge: what reaches past it is cut, so a tentacle comes out from behind it.
     `<svg x="${left}">${scene.takos.map(tako => takodachi(tako, wahs, show, scene.form === 'cat')).join('')}</svg>` +
     `<svg x="100%" y="50%" overflow="visible"><g transform="translate(${-right} 0)"><g class="ina-s"><g transform="translate(-52 -16)" class="${state}" style="--d:${lull}s;--a:${rises}s;--h:${hold}s">${ina(scene, said, wahs, parts, hold)}</g></g></g></svg>` +
