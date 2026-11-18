@@ -1,7 +1,7 @@
 // Ina's two corner tentacles, one hanging from the top and one rising from the
 // bottom. Now and then one holds a takodachi: wrapped in its tip, or riding it.
 
-import { curls, px, tentacle } from './pixels.js'
+import { curls, px, pxr, tentacle } from './pixels.js'
 
 /** What each tentacle holds, rolled on its own: a quarter wrap, a quarter ride. */
 export function rollHold(random = Math.random) {
@@ -25,8 +25,8 @@ const AROUND = 5.4
 
 // Rows to markup with the root at the right edge, 7 in: rising from the foot,
 // or hung from the top.
-const rising = ({ rows, root }) => px(rows, -root - 7, -rows.length)
-const hanging = ({ rows, root }) => px(rows.toReversed(), -root - 7, 0)
+const rising = ({ rows, root }) => pxr(rows, -root - 7, -rows.length)
+const hanging = ({ rows, root }) => pxr(rows.toReversed(), -root - 7, 0)
 
 /** A tentacle that leaves its curve at `from` to loop round, and the loop's middle in its own steps. */
 function wrapping({ length, bend, from }) {

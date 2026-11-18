@@ -9,10 +9,11 @@ const T0 = 10000
 export async function cases(themeDir, { width, height, insets }) {
   const S = await import(`${pathToFileURL(`${themeDir}/scene.js`).href}?${Date.now()}`)
   const { ASLEEP, carry, cheer, doze, draw, join, leave, wake } = S
-  const sized = scene => draw(scene, insets).replace('width="100%" height="100%"', `width="${width}" height="${height}"`)
+  // `hold` is what the corner tentacles hold; an older theme's `draw` ignores it.
+  const sized = (scene, hold) => draw(scene, insets, hold).replace('width="100%" height="100%"', `width="${width}" height="${height}"`)
   const out = {}
 
-  const still = (name, scene) => (out[name] = [{ t: 0, svg: sized(scene) }])
+  const still = (name, scene, hold) => (out[name] = [{ t: 0, svg: sized(scene, hold) }])
   // Each change is made `ms` in and carried on from what was playing, as the app does.
   const changes = (name, start, steps) => {
     let scene = start
@@ -95,6 +96,11 @@ export async function cases(themeDir, { width, height, insets }) {
       still(`ao-cat-t${takos}`, show(at('cat', false, takos), 'ao'))
     }
   }
+  // Both corner tentacles holding a takodachi, bobbing: wrapped, riding, and through a show.
+  const WRAP = { high: 'wrap', low: 'wrap' }
+  still('held-wrap-work', at('nerd', false, 3), WRAP)
+  still('held-ride-work', at(cat ? 'cat' : 'nerd', false, 0), { high: 'ride', low: 'ride' })
+  still('held-wrap-trophy', show(at('nerd', false, 3), 'trophy'), WRAP)
   // Redrawn mid-show: a takodachi joins, another leaves, the turn ends.
   for (const [kind, form] of [['trophy', 'nerd'], ['ao', 'nerd'], ['zoltraak', 'frieren'], ...(cat ? [['trophy', 'cat'], ['ao', 'cat']] : [])]) {
     changes(`${kind}${form === 'cat' ? '-cat' : ''}-redrawn`, show(at(form, false, 2), kind), [

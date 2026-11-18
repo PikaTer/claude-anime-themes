@@ -73,6 +73,39 @@ export function px(rows, ox = 0, oy = 0) {
     .join('')
 }
 
+/**
+ * As `px`, but each rectangle after a color's first is placed relative to the
+ * one before: the same pixels in fewer characters, for the largest sprites.
+ */
+export function pxr(rows, ox = 0, oy = 0) {
+  const paths = {}
+  const last = {}
+
+  rows.forEach((row, y) => {
+    for (let x = 0; x < row.length; ) {
+      const color = row[x]
+      let run = 1
+
+      while (row[x + run] === color) {
+        run++
+      }
+      if (color !== '.') {
+        const rect = `h${run}v1h-${run}z`
+        const [lx, ly] = last[color] ?? []
+
+        // After a `z` the pen is back at the rectangle's corner, so `m` moves from there.
+        paths[color] = paths[color] === undefined ? `M${x + ox} ${y + oy}${rect}` : `${paths[color]}m${x + ox - lx} ${y + oy - ly}${rect}`
+        last[color] = [x + ox, y + oy]
+      }
+      x += run
+    }
+  })
+
+  return Object.entries(paths)
+    .map(([color, d]) => `<path fill="${PAL[color]}" d="${d}"/>`)
+    .join('')
+}
+
 export const mirror = rows => rows.map(row => row + [...row].reverse().join(''))
 /** One sprite at `x`, and its mirror image on the other side of a `width` wide sprite. */
 export const both = (rows, x, y, width) =>

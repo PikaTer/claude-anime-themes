@@ -6,6 +6,7 @@ import { ASLEEP, HOLD, ask, carry, cheer, doze, draw, join, leave, missingGlyphs
 import { showParts } from './themes/ina-pixel-dark/special.js'
 import { CAT_SAY } from './themes/ina-pixel-dark/cat.js'
 import { rollHold, tentacles } from './themes/ina-pixel-dark/held.js'
+import { px, pxr, tentacle, curls } from './themes/ina-pixel-dark/pixels.js'
 import type { Scene } from '../types'
 
 const BACKDROP = {
@@ -150,16 +151,17 @@ test('takodachis keep to the left, apart, and the scene fits its limit', () => {
     expect(tako.y).toBeLessThan(66)
   }
   expect(new Set(busy.takos.map(tako => tako.enter)).size).toBeGreaterThan(2)
-  // Every way in and every way out at once, each WAH answered: still under an Svg's limit.
+  // Every way in and every way out at once, each WAH answered, both corner
+  // tentacles wrapping a takodachi: still under an Svg's limit.
   const going = ids.reduce(leave, busy)
-  expect(draw({ ...going, takos: [...busy.takos.map(tako => ({ ...tako, phase: 'in' as const })), ...going.takos] }).length).toBeLessThan(131072)
+  expect(draw({ ...going, takos: [...busy.takos.map(tako => ({ ...tako, phase: 'in' as const })), ...going.takos] }, undefined, WRAP).length).toBeLessThan(131072)
   expect(doze(going, 't', 'done').takos).toEqual([])
   // Frieren Ina leaving, her staffed takodachis all coming and going too.
   // Frieren Ina and Ao-chan leaving together.
   const staffed = ids.reduce(join, wake(ASLEEP, BOTH))
   const parting = doze(ids.reduce(leave, staffed), 'd', 'ask')
   expect(
-    draw({ ...parting, takos: [...staffed.takos.map(tako => ({ ...tako, phase: 'in' as const })), ...parting.takos] }).length,
+    draw({ ...parting, takos: [...staffed.takos.map(tako => ({ ...tako, phase: 'in' as const })), ...parting.takos] }, undefined, WRAP).length,
   ).toBeLessThan(131072)
   // Cat Ina dozing mid-way through Ao-chan's love show, her eared takodachis all coming and going.
   const T = 100000
@@ -169,7 +171,7 @@ test('takodachis keep to the left, apart, and the scene fits its limit', () => {
   expect(purring.special?.kind).toBe('ao')
   expect(purring.form).toBe('cat')
   expect(
-    draw({ ...purring, takos: [...eared.takos.map(tako => ({ ...tako, phase: 'in' as const })), ...purring.takos] }).length,
+    draw({ ...purring, takos: [...eared.takos.map(tako => ({ ...tako, phase: 'in' as const })), ...purring.takos] }, undefined, WRAP).length,
   ).toBeLessThan(131072)
 })
 
@@ -846,15 +848,16 @@ test('every show fits the limit with Frieren Ina, Ao-chan and every takodachi co
     const shown = cheer(busy, 'x', T)
     const going = after(shown, now => ids.reduce(leave, now), T + 500)
     const parting = after(going, now => doze(now, 'd', 'ask'), T + 1000)
-    const svg = draw({ ...parting, takos: [...busy.takos.map(tako => ({ ...tako, phase: 'in' as const })), ...going.takos] })
+    const svg = draw({ ...parting, takos: [...busy.takos.map(tako => ({ ...tako, phase: 'in' as const })), ...going.takos] }, undefined, WRAP)
 
     expect(svg).toMatch(SHOWN)
-    expect(svg.length).toBeLessThan(131072)
+    // With room to spare: the marks are shuffled at random, a few hundred characters either way.
+    expect(svg.length).toBeLessThan(131072 - 500)
   }
   // Cat Ina waking to a prompt's love show, her eared takodachis all coming in.
   const prompted = wake(ASLEEP, CAT_AO, T)
   const crowd = ids.reduce(join, prompted)
-  const svg = draw({ ...prompted, takos: crowd.takos.map(tako => ({ ...tako, phase: 'in' as const })) })
+  const svg = draw({ ...prompted, takos: crowd.takos.map(tako => ({ ...tako, phase: 'in' as const })) }, undefined, WRAP)
   expect(prompted.special?.kind).toBe('ao')
   expect(svg).toContain('class="v-ht"')
   expect(svg.length).toBeLessThan(131072)
@@ -991,4 +994,24 @@ test('held takodachis bob while Ina is up, hold still asleep, and wear cat ears 
   expect(draw({ ...wake(ASLEEP, 't'), ina: 'work' }, undefined, WRAP)).not.toContain('#cear')
   // Nothing held, no ears drawn for it.
   expect(draw({ ...wake(ASLEEP, CAT), ina: 'work' }, undefined, NONE)).not.toContain('id="cear"')
+})
+
+test('relative paths draw the very pixels plain ones do', () => {
+  // Every pixel a run of `h` rectangles covers, by color.
+  const cells = (svg: string) =>
+    [...svg.matchAll(/fill="([^"]+)" d="([^"]+)"/g)].flatMap(([, fill, d]) => {
+      const out: string[] = []
+      let [x, y] = [0, 0]
+      for (const [, op, a, b] of d.matchAll(/([Mmhvz])(-?\d*)(?: (-?\d+))?/g)) {
+        if (op === 'M') [x, y] = [Number(a), Number(b)]
+        if (op === 'm') [x, y] = [x + Number(a), y + Number(b)]
+        if (op === 'h' && Number(a) > 0) for (let i = 0; i < Number(a); i++) out.push(`${fill} ${x + i} ${y}`)
+      }
+      return out
+    }).sort()
+  const { rows } = tentacle(110, curls(0.4, 7))
+
+  expect(cells(pxr(rows, -60, -110))).toEqual(cells(px(rows, -60, -110)))
+  expect(cells(pxr(rows, -60, -110)).length).toBeGreaterThan(500)
+  expect(pxr(rows, -60, -110).length).toBeLessThan(px(rows, -60, -110).length * 0.9)
 })
