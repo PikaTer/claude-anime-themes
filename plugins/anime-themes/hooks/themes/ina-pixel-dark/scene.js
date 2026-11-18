@@ -19,7 +19,7 @@ const PAL = {
   G: '#c6cbdd', // laptop light
   k: '#c98a45', // cookie
   K: '#6e4525', // chocolate chip
-  z: '#b9a6ee', // zzz, stars
+  z: '#b9a6ee', // zzz, Ina's marks
   m: '#2a1f4e', // sigil
   M: '#43317a', // sigil light
   q: '#a8662a', // sigil and sucker orange
@@ -333,29 +333,95 @@ const high = tentacle(70, curls(0.35, 8))
 const TENTACLE_LOW = px(low.rows, -low.root - 7, -low.rows.length)
 const TENTACLE_HIGH = px(high.rows.toReversed(), -high.root - 7, 0)
 
-// Stars and small geometry, scattered the same way every time.
-const SPARKS = [
-  ['.z.', 'zzz', '.z.'],
-  ['..z..', '..z..', 'zzzzz', '..z..', '..z..'],
-  ['..z..', '.z.z.', 'z...z', '.z.z.', '..z..'],
-  ['..y..', '.y.y.', 'yyyyy'],
-  ['z'],
+// Ina's marks, scattered over the sky: a haloed takodachi, a four-point star,
+// a heart and a clover, and a small star to fill between them.
+const MARKS = [
+  [
+    '..yyyyyyy..',
+    '.y.......y.',
+    '..yyyyyyy..',
+    '...........',
+    '....zzz....',
+    '..zzzzzzz..',
+    '.zzzzzzzzz.',
+    '.zzzzzzzzz.',
+    'zzzzzzzzzzz',
+    'zzzzzzzzzzz',
+    'zzzzzzzzzzz',
+    '.zzzzzzzzz.',
+  ],
+  [
+    '......z......',
+    '......z......',
+    '......z......',
+    '.....zzz.....',
+    '....zzzzz....',
+    '...zzzzzzz...',
+    'zzzzzzzzzzzzz',
+    '...zzzzzzz...',
+    '....zzzzz....',
+    '.....zzz.....',
+    '......z......',
+    '......z......',
+    '......z......',
+  ],
+  [
+    '.zzz...zzz.',
+    'z...z.z...z',
+    'z....z....z',
+    'z.........z',
+    'z.........z',
+    '.z.......z.',
+    '..z.....z..',
+    '...z...z...',
+    '....z.z....',
+    '.....z.....',
+  ],
+  [
+    '....zzzzz....',
+    '...z.....z...',
+    '...z.....z...',
+    '.zzz.....zzz.',
+    'z...........z',
+    'z...........z',
+    'z...........z',
+    'z...........z',
+    'z...........z',
+    '.zzz.....zzz.',
+    '...z.....z...',
+    '...z.....z...',
+    '....zzzzz....',
+  ],
+  ['...z...', '...z...', '..zzz..', 'zzzzzzz', '..zzz..', '...z...', '...z...'],
 ]
-const SPARK_DEFS = SPARKS.map((spark, i) => `<g id="s${i}" transform="scale(3)">${px(spark)}</g>`).join('')
+// Each mark small, and once more half again as large.
+const MARK_DEFS = MARKS.map(
+  (mark, i) => `<g id="m${i}"><g transform="scale(2)">${px(mark)}</g></g><g id="M${i}"><g transform="scale(3)">${px(mark)}</g></g>`,
+).join('')
+// A new sky each time the theme loads, then the same one at every redraw, so
+// the marks hold still as the scene changes. Awake, each comes and goes on a
+// clock of its own.
 const STARS = (() => {
-  let seed = 7
-  // A small generator of its own, so the sky is the same at every draw.
-  const random = () => (seed = (seed * 16807) % 2147483647) / 2147483647
+  const COLUMNS = 7
+  const ROWS = 6
   let stars = ''
 
-  for (let i = 0; i < 46; i++) {
-    const x = random() * 100
-    const y = random() * 96
-    const kind = Math.floor(random() * SPARKS.length)
+  // One mark at most to a cell of a loose grid: random, but never in a heap.
+  for (let i = 0; i < COLUMNS * ROWS; i++) {
+    if (Math.random() < 0.2) {
+      continue
+    }
+    const x = ((i % COLUMNS) + Math.random() * 0.8) * (100 / COLUMNS)
+    const y = (Math.floor(i / COLUMNS) + Math.random() * 0.8) * (96 / ROWS)
+    const kind = Math.floor(Math.random() * MARKS.length)
+    const size = Math.random() < 0.2 ? 'M' : 'm'
     // Faint where the conversation's words sit.
-    const opacity = x > 24 && x < 72 ? 0.16 : 0.3 + random() * 0.4
+    const opacity = x > 24 && x < 72 ? 0.14 : 0.3 + Math.random() * 0.35
+    const period = 4 + Math.random() * 7
 
-    stars += `<use href="#s${kind}" x="${x.toFixed(1)}%" y="${y.toFixed(1)}%" opacity="${opacity.toFixed(2)}"${i % 2 ? ` class="tw${i % 3}"` : ''}/>`
+    stars +=
+      `<use href="#${size}${kind}" x="${x.toFixed(1)}%" y="${y.toFixed(1)}%" opacity="${opacity.toFixed(2)}" class="mk" ` +
+      `style="--o:${opacity.toFixed(2)};--p:${period.toFixed(1)}s;--t:-${(Math.random() * period).toFixed(1)}s"/>`
   }
 
   return stars
@@ -487,7 +553,7 @@ const WAH_ECHO = (() => {
 })()
 
 const DEFS =
-  `<g id="tako">${TAKO}</g><g id="ring">${RING}</g><g id="grab">${GRAB}</g><g id="wah">${WAH_ECHO}</g>${SPARK_DEFS}`
+  `<g id="tako">${TAKO}</g><g id="ring">${RING}</g><g id="grab">${GRAB}</g><g id="wah">${WAH_ECHO}</g>${MARK_DEFS}`
 
 const ENTER = ['circle', 'tentacle', 'pop', 'fall', 'ink']
 const EXIT = ['circle', 'tentacle', 'ascend', 'ink', 'sink']
@@ -535,9 +601,7 @@ const CSS = `
 .wake .sigil{animation:glow .6s steps(4) backwards,pulse 4s steps(4) 1.2s infinite}
 .work .sigil{animation:pulse 4s steps(4) infinite}
 .doze .sigil{animation:dim .6s steps(4) var(--d) backwards}
-.wake .tw0,.work .tw0{animation:twinkle 2.3s steps(1) infinite}
-.wake .tw1,.work .tw1{animation:twinkle 3.1s steps(1) -1s infinite}
-.wake .tw2,.work .tw2{animation:twinkle 4.3s steps(1) -2s infinite}
+.wake .mk,.work .mk{animation:blink var(--p) steps(2) var(--t) infinite}
 .wake .zzz,.work .zzz,.wait .zzz,.wake .closed,.work .closed,.wait .closed{opacity:0}
 .wake .open,.work .open,.wait .open,.wake .glasses,.work .glasses,.wait .glasses{opacity:1}
 .wake .zzz{animation:on .3s}
@@ -596,7 +660,7 @@ const CSS = `
 @keyframes glow{from{opacity:.5}}
 @keyframes dim{from{opacity:1}}
 @keyframes pulse{50%{opacity:.7}}
-@keyframes twinkle{50%,to{opacity:.08}}
+@keyframes blink{0%,35%,to{opacity:0}45%,85%{opacity:var(--o)}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important}}
 `.replaceAll('\n', '')
 

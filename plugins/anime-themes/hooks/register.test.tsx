@@ -117,6 +117,17 @@ test('the sprites stand clear of the side panels, as /ina-insets says, and at th
   expect(await source('desktop')).toContain('translate(-40 0)')
 })
 
+test("Ina's marks are scattered once and hold still as the scene changes", () => {
+  const marks = (svg: string) => svg.match(/<use href="#[mM]\d[^>]*>/g) ?? []
+  const asleep = marks(draw(ASLEEP))
+  const awake = marks(draw(join(wake(ASLEEP, 't'), 'a1')))
+
+  expect(asleep.length).toBeGreaterThan(15)
+  expect(awake).toEqual(asleep)
+  // More than one kind of mark, at more than one size.
+  expect(new Set(asleep.map(mark => mark.slice(0, 15))).size).toBeGreaterThan(3)
+})
+
 test('takodachis keep to the left, apart, and the scene fits its limit', () => {
   const ids = Array.from({ length: 14 }, (_, i) => `agent-${i * 7919}`)
   const busy = ids.reduce(join, wake(ASLEEP, 't'))
