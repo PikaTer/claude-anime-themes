@@ -188,7 +188,7 @@ export const registerIna: Register = on => {
     return (
       <Svg
         source={draw(now, edges)}
-        alt={`A pixel Ina, ${!awake ? 'asleep' : now.ina === 'wait' ? 'waiting for an answer' : now.form === 'frieren' ? 'summoned as Frieren, elf ears and all' : 'working in nerd glasses'}${awake && now.ao ? ', with Ao-chan the grimoire' : ''}${showing}${busy > 0 ? `, and ${busy} takodachi at work` : ''}`}
+        alt={`A pixel Ina, ${!awake ? 'asleep' : now.ina === 'wait' ? 'waiting for an answer' : now.form === 'frieren' ? 'summoned as Frieren, elf ears and all' : now.form === 'cat' ? "transformed into Ninyomanyo Ninya'nis, cat ears and all" : 'working in nerd glasses'}${awake && now.ao ? ', with Ao-chan the grimoire' : ''}${showing}${busy > 0 ? `, and ${busy} takodachi at work` : ''}`}
       />
     )
   })
@@ -198,7 +198,7 @@ export const ina: Theme = {
   id: 'ina-pixel-dark',
   aliases: ['ina'],
   label: 'Ina pixel dark',
-  blurb: 'Purple on black, with a pixel Ina who naps while idle, works in nerd glasses (or now and then is summoned as Frieren), now and then with Ao-chan, her grimoire, and a takodachi for every subagent. A commit, deploy or merge gets a show',
+  blurb: 'Purple on black, with a pixel Ina who naps while idle, works in nerd glasses (or now and then is summoned as Frieren, or turns into cat Ina), now and then with Ao-chan, her grimoire, and a takodachi for every subagent. A commit, deploy or merge gets a show',
   swatch: ['#07050c', '#191327', '#9b7fe0', '#d48bd8', '#f6a440', '#ece6fa'],
   look: LOOK,
   warning: problems.find(line => line.startsWith("Desktop won't paint")),

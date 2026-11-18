@@ -153,6 +153,16 @@ test('takodachis keep to the left, apart, and the scene fits its limit', () => {
   expect(
     draw({ ...parting, takos: [...staffed.takos.map(tako => ({ ...tako, phase: 'in' as const })), ...parting.takos] }).length,
   ).toBeLessThan(131072)
+  // Cat Ina dozing mid-way through Ao-chan's love show, her eared takodachis all coming and going.
+  const T = 100000
+  const eared = ids.reduce(join, wake(ASLEEP, CAT_AO))
+  const loving = cheer(ids.reduce(leave, eared), 'land', T)
+  const purring = carry(loving, doze(loving, 'd', 'ask'), T + 1000)
+  expect(purring.special?.kind).toBe('ao')
+  expect(purring.form).toBe('cat')
+  expect(
+    draw({ ...purring, takos: [...eared.takos.map(tako => ({ ...tako, phase: 'in' as const })), ...purring.takos] }).length,
+  ).toBeLessThan(131072)
 })
 
 // Turn ids, and the first of them that summons Frieren Ina.
@@ -242,8 +252,10 @@ test("the scene draws cat Ina's transformation, and none of it for anyone else",
   expect(draw(join(cat, 'a'))).toContain('class="work c"')
   expect(draw(join(cat, 'a'))).not.toContain('class="sigil"')
   expect(draw(join(cat, 'a'))).not.toContain('class="csp"')
-  // Dozing, the round circle comes back.
+  // Dozing, the round circle comes back, hidden till the heart turns into it: its
+  // fade-in comes after the doze's dimming, whose own fill would show it at once.
   expect(draw(doze(cat, 'd', 'done'))).toContain('class="sigil"')
+  expect(css(draw(doze(cat, 'd', 'done')))).toMatch(/\.c\.doze \.sigil\{animation:dim [^}]*,cin /)
   // Never for nerd or Frieren Ina.
   for (const svg of [draw(wake(ASLEEP, 't')), draw(wake(ASLEEP, FRIEREN)), draw(ASLEEP)]) {
     for (const part of ['class="ch"', 'class="heart"', '.cl{']) {

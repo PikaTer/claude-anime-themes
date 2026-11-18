@@ -135,7 +135,7 @@ export const CAT_CSS = `
 .c.doze .cr{animation:cdown .4s steps(4) calc(var(--h) + 1.8s) forwards}
 .c.doze .cl{animation:cdown .4s steps(4) calc(var(--h) + 2.1s) forwards}
 .c.doze .heart{animation:cout .8s steps(4) calc(var(--h) + 2s) forwards}
-.c.doze .sigil{animation:cin .8s steps(4) calc(var(--h) + 2s) backwards,dim .6s steps(4) var(--d) backwards}
+.c.doze .sigil{animation:dim .6s steps(4) var(--d) backwards,cin .8s steps(4) calc(var(--h) + 2s) backwards}
 .c.doze .cf{opacity:0;animation:on calc(var(--h) + 2.8s)}
 .at2{opacity:0}
 .c.wake .at1,.c.work .at1{animation:flip 1.6s steps(1) infinite}
