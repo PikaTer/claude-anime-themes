@@ -3,7 +3,7 @@
 import { both, curls, grid, line, mirror, plot, px, round, rows, tentacle } from './pixels.js'
 import { COVER, FAREWELL, FR_SAY, FR_WAKE, GLINT, KANA, STAFF, frierenBack, frierenFront, summonFx } from './frieren.js'
 import { AO_BYE, AO_CSS, AO_DEFS, AO_GET, AO_HI, AO_SAY, AO_SPARKS, aoChan } from './ao.js'
-import { FIRE, SHOW, SHOW_SAY, showParts, takoShow } from './special.js'
+import { FIRE, SHOW, SHOW_SAY, SHOW_SAY_CAT, showParts, takoShow } from './special.js'
 import { CAT_AO, CAT_BYE, CAT_CSS, CAT_HEAD, CAT_SAY, CAT_SPARKS, CAT_WAKE, HEART, TAKO_EARS, nyan } from './cat.js'
 
 // Ina's head, left half: 42 x 32 once mirrored, down to where her hair hangs
@@ -266,7 +266,7 @@ function lines({ ina, cue, seed, form, ao }) {
 /** Characters of Ina's lines the pixel font cannot draw: empty when every line can be drawn. */
 export function missingGlyphs() {
   const shared = [...Object.values(SAY).flat(), ...AO_SAY, 'WAH!']
-  const all = [...shared, ...shared.map(nyan), ...FR_SAY, FR_WAKE, FAREWELL, AO_HI, AO_GET, AO_BYE, ...CAT_SAY, CAT_WAKE, CAT_AO, CAT_BYE, ...Object.values(SHOW_SAY)]
+  const all = [...shared, ...shared.map(nyan), ...FR_SAY, FR_WAKE, FAREWELL, AO_HI, AO_GET, AO_BYE, ...CAT_SAY, CAT_WAKE, CAT_AO, CAT_BYE, ...Object.values(SHOW_SAY), ...Object.values(SHOW_SAY_CAT)]
 
   return [...new Set(all.join('').replace(/[\n{}]/g, ''))].filter(char => FONT[char] === undefined)
 }
@@ -570,7 +570,7 @@ function takodachi(tako, wahs, show, cat) {
   const beat = 0.3 + (hash(tako.id) % 5) * 0.12
   const echoes = tako.phase === 'out' ? [] : wahs
   // Its part in a show: any takodachi not on its way out joins in, on its own beat.
-  const part = show !== null && tako.phase !== 'out' ? takoShow(show.kind) : null
+  const part = show !== null && tako.phase !== 'out' ? takoShow(show.kind, cat) : null
   const body = echoes.reduce(
     (inner, slot) => `<g style="${plays(slot, (slot.at + beat).toFixed(2), 'hop24', 'hop .3s steps(3)')}">${inner}</g>`,
     `<g class="bob" style="animation-delay:-${((tako.cell * 0.37) % 1.4).toFixed(2)}s">` +
@@ -728,7 +728,7 @@ export function draw(scene, { left = 0, right = 0 } = {}) {
   // Cat Ina turns back first too, a little quicker.
   const lull = (scene.form === 'frieren' ? 5 : scene.form === 'cat' ? 4 : scene.cue === 'ask' ? 3 : 2.4) + hold
   const state = `${scene.ina}${scene.form === 'frieren' ? ' f' : scene.form === 'cat' ? ' c' : ''}${scene.ao ? ' a' : ''}${show === null ? '' : ` s-${show.kind}`}`
-  const parts = show === null ? null : showParts(show.kind, { say: overHead, mouth: MOUTH_OPEN, nerd: scene.form !== 'frieren', aim: show.aim })
+  const parts = show === null ? null : showParts(show.kind, { say: overHead, mouth: MOUTH_OPEN, nerd: scene.form === 'nerd', cat: scene.form === 'cat', aim: show.aim })
   // When Ao-chan rises: as nerd Ina wakes, or once Frieren or cat Ina is summoned.
   const rises = scene.form === 'nerd' ? 0.2 : 1.9
 

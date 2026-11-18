@@ -6,6 +6,7 @@
 // the show starts, which is negative when a redraw comes in partway through.
 
 import { AO_AT, AO_CLOSED, AO_OPEN } from './ao.js'
+import { aoCat } from './cat.js'
 import { grid, line, mirror, plot, px, round, rows } from './pixels.js'
 
 /** How long a show lasts, in seconds. */
@@ -16,6 +17,11 @@ export const SHOW_SAY = {
   trophy: "ANOTHER\nGOLD TROPHY\nFOR NINOMAE\nINA'NIS!",
   ao: 'WORLD\nDOM{INA}TION',
   zoltraak: 'ZOLTRAAK!!!',
+}
+/** What cat Ina says in hers: her own name, and a world domination of love. */
+export const SHOW_SAY_CAT = {
+  trophy: "ANOTHER\nGOLD TROPHY\nFOR NINYOMANYO\nNINYA'NIS!",
+  ao: 'WORLD\nDOM{INYA}TION',
 }
 
 /** A moment of the show, `s` seconds in. */
@@ -53,6 +59,9 @@ const TROPHY = mirror([
 ])
 const TRO_AT = [9, -28]
 const TROPHY_ART = px(TROPHY, ...TRO_AT) + px(['w', 'w', 'w', 'w'], TRO_AT[0] + 5, TRO_AT[1] + 3) + px(['w'], TRO_AT[0] + 6, TRO_AT[1] + 2)
+// Cat Ina's: gold cat ears on its rim.
+const CUP_EAR = ['o...', 'oo..', 'oJo.', 'ojjo']
+const CUP_EARS = `<g class="v-cup">${px(CUP_EAR, TRO_AT[0] + 5, TRO_AT[1] - 4)}${px(CUP_EAR.map(row => [...row].reverse().join('')), TRO_AT[0] + 15, TRO_AT[1] - 4)}</g>`
 
 // Rays round it, in two frames a little turned from each other.
 const RAY_C = [21, -20]
@@ -128,6 +137,35 @@ function aura(phase) {
 // Nerd Ina's lenses glare red while Ao-chan rules.
 const GLARE = ['.ooooo.', 'oPPPPPo', 'oPwPPPo', 'oPPPPPo', 'oPPPPPo', 'oPPPPPo', '.ooooo.']
 const RED_LENSES = px(GLARE, 10, 15) + px(GLARE, 25, 15)
+
+// With cat Ina, Ao-chan's show turns to love: a heart of pink light round her
+// in place of the dark aura, beating in two frames, small hearts rising off it,
+// and Ina blushing.
+const HEARTLET = ['.E.E.', 'EEEEE', '.EEE.', '..E..']
+function heartAura(beat) {
+  const [w, h, cx, cy] = [61, 66, 30, 40]
+  const cells = grid(w, h)
+  const inside = (x, y, k) => {
+    const dx = (x - cx) / (15 * k)
+    const dy = -(y - cy) / (15 * k) + 0.25
+
+    return (dx * dx + dy * dy - 1) ** 3 - dx * dx * dy ** 3 <= 0
+  }
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (inside(x, y, 1.45 + beat) && !inside(x, y, 1.05 + beat)) {
+        cells[y][x] = inside(x, y, 1.38 + beat) ? (inside(x, y, 1.2 + beat) ? 'f' : 'F') : 'E'
+      }
+    }
+  }
+
+  return px(rows(cells), BOOK_C[0] - cx, BOOK_C[1] - cy)
+}
+const RISING = [[-14, -16], [44, -20], [-8, -34], [50, -36], [6, -44], [34, -46], [20, -52]]
+  .map(([x, y], i) => `<g class="v-ht" style="--k:${(i * 0.23).toFixed(2)}s">${px(HEARTLET, x, y)}</g>`)
+  .join('')
+const BLUSH = px(['E.E.E', '.E.E.'], 9, 22) + px(['E.E.E', '.E.E.'], 28, 22)
 
 // Zoltraak: a magic circle over Frieren Ina's head, struck by lightning, that
 // charges and fires a beam across the whole window.
@@ -214,6 +252,9 @@ const FEAR =
   px(DROP, 20, 2) +
   px(DROP, 1, 4)
 const ALARM = px(['y.y', 'y.y', 'y.y', '...', 'y.y'], 19, -7)
+// Smitten: heart eyes, and a heart over them in place of the "!!".
+const HEART_EYES = px(HEARTLET, 5, 9) + px(HEARTLET, 14, 9)
+const LOVE = px(HEARTLET, 18, -6)
 // Both arms thrown up: in worship, or holding up a barrier.
 const ARMS_UP = px(['.oo', 'oTo', 'oTo', 'oTo', 'oTo', 'oTo'], 0, 2) + px(['oo.', 'oTo', 'oTo', 'oTo', 'oTo', 'oTo'], 21, 2)
 // A magic barrier, as Fern raises one: a flat honeycomb of glass held up in
@@ -256,7 +297,7 @@ const BARRIER = (() => {
 // Drawn once, while a show plays.
 const ART = {
   trophy: { rays: [sunburst(0), sunburst(Math.PI / 8)] },
-  ao: { aura: [aura(0), aura(2.4)] },
+  ao: { aura: [aura(0), aura(2.4)], love: [heartAura(0), heartAura(0.08)] },
   zoltraak: { circle: [magicCircle(0), magicCircle(Math.PI / 12)] },
 }
 
@@ -264,7 +305,14 @@ const ART = {
  * A takodachi's part in a show: `wrap` goes round its body, `on` rides with
  * its bob, and `by` stands beside it.
  */
-export function takoShow(kind) {
+export function takoShow(kind, cat = false) {
+  if (kind === 'ao' && cat) {
+    return {
+      wrap: body => `<g class="v-sw">${body}</g>`,
+      on: '<use href="#v-he" class="v-tf"/><use href="#v-lo" class="v-ex"/><use href="#v-arm" class="v-up"/>',
+      by: '',
+    }
+  }
   return kind === 'trophy'
     ? { wrap: body => body, on: '<use href="#v-sg" class="v-sg"/>', by: '' }
     : kind === 'ao'
@@ -288,8 +336,11 @@ const SKY_LINE = { bottom: ZC[1] + 4, right: ZC[0] - 18 }
  * on it, moving with her; `defs` for the takodachis; and its `css`. `say`
  * draws a line in a bubble with its foot at a height, `mouth` is her mouth open.
  */
-export function showParts(kind, { say, mouth, nerd, aim = 'left' }) {
-  const line = aim === 'up' ? say(SHOW_SAY[kind], SKY_LINE.bottom, SKY_LINE.right) : say(SHOW_SAY[kind], LINE_FOOT[kind])
+export function showParts(kind, { say, mouth, nerd, cat = false, aim = 'left' }) {
+  const text = (cat ? SHOW_SAY_CAT[kind] : undefined) ?? SHOW_SAY[kind]
+  // Cat ears on the trophy push her line up a little.
+  const foot = LINE_FOOT[kind] - (cat && kind === 'trophy' ? 4 : 0)
+  const line = aim === 'up' ? say(text, SKY_LINE.bottom, SKY_LINE.right) : say(text, foot)
   const talk = `<g class="v-mo">${mouth}</g>`
   const window = (cls, fill) => `<rect class="${cls}" width="100%" height="100%" fill="${fill}"/>`
 
@@ -303,11 +354,32 @@ export function showParts(kind, { say, mouth, nerd, aim = 'left' }) {
         '<radialGradient id="v-gg"><stop offset="0" stop-color="#ffd27f" stop-opacity=".75"/><stop offset="1" stop-color="#f6a440" stop-opacity="0"/></radialGradient>' +
         `<circle class="v-glow" cx="${RAY_C[0]}" cy="${RAY_C[1]}" r="38" fill="url(#v-gg)"/>` +
         `<g class="v-rays"><g class="v-r1">${a}</g><g class="v-r2">${b}</g></g>` +
-        `<g class="v-tro"><g class="v-hov">${TROPHY_ART}</g></g>${SPARKS}${CONFETTI}`,
+        `<g class="v-tro"><g class="v-hov">${TROPHY_ART}${cat ? CUP_EARS : ''}</g></g>${SPARKS}${CONFETTI}`,
       front: `<g class="v-say">${line}</g>`,
       face: talk,
       defs: `<g id="v-sg">${SHADES}<g class="v-gl">${SHADES_GLINT}</g></g>`,
       css: TROPHY_CSS,
+    }
+  }
+  if (kind === 'ao' && cat) {
+    const [a, b] = ART.ao.love
+
+    return {
+      under: window('v-dim', '#ff4f9a'),
+      over: window('v-fl', '#ff8ac4'),
+      back:
+        '<radialGradient id="v-lg"><stop offset="0" stop-color="#ff8ac4" stop-opacity=".45"/><stop offset="1" stop-color="#ff8ac4" stop-opacity="0"/></radialGradient>' +
+        `<circle class="v-lv" cx="21" cy="16" r="58" fill="url(#v-lg)"/>` +
+        `<g class="v-fly"><g class="v-hov">` +
+        `<circle class="v-glow" cx="${BOOK_C[0]}" cy="${BOOK_C[1]}" r="44" fill="url(#v-lg)"/>` +
+        `<g class="v-love"><g class="v-r1">${a}</g><g class="v-r2">${b}</g></g>` +
+        `<g class="v-aoc">${px(AO_CLOSED, ...BOOK_AT)}</g>` +
+        `<g class="v-aoo">${px(AO_OPEN, ...BOOK_AT)}<circle class="v-eye" cx="${PAGE_EYE[0]}" cy="${PAGE_EYE[1]}" r="3" fill="#ff8ac4"/></g>` +
+        `${aoCat(BOOK_AT)}</g></g>${RISING}`,
+      front: `<g class="v-say">${line}</g>`,
+      face: `${talk}<g class="v-bl">${BLUSH}</g>`,
+      defs: `<g id="v-he">${HEART_EYES}</g><g id="v-lo">${LOVE}</g><g id="v-arm">${ARMS_UP}</g>`,
+      css: LOVE_CSS,
     }
   }
   if (kind === 'ao') {
@@ -408,6 +480,25 @@ const AO_SHOW_CSS = `${BASE_CSS}
 .v-up{animation:vblink .8s steps(1) ${atk(2.2)} 5}
 @keyframes vfly{from{transform:translate(${FLY[0]}px,${FLY[1]}px)}}
 @keyframes vland{to{transform:translate(${FLY[0]}px,${FLY[1]}px)}}
+`.replaceAll('\n', '')
+
+// The love show: Ao-chan's, gentler. The window blushes faintly instead of
+// darkening, the takodachis sway a pixel each way instead of trembling, and Ina
+// hops once instead of recoiling.
+const LOVE_CSS = `${AO_SHOW_CSS}
+.v-love,.v-lv,.v-ht,.v-bl{opacity:0}
+.v-dim{--f:.12}
+.v-fl{--f:.15}
+.v-love{animation:on 5.2s ${at(0.9)}}
+.v-lv{animation:on 5.2s ${at(0.9)},vpulse 1.8s steps(4) ${at(0.9)} 3}
+.v-ht{animation:vup 1.6s steps(8) calc(var(--x) + 1.2s + var(--k)) 3}
+.v-bl{animation:on 5.2s ${at(1)}}
+.v-hd{animation:hop .3s steps(3) ${at(1)}}
+.v-ex{animation:vblink 1.6s steps(1) ${atk(0.6)} 3}
+.v-sw{animation:vsway 1.6s steps(1) ${atk(0.6)} 3}
+.v-up{animation:vblink 1.6s steps(1) ${atk(2.2)} 3}
+@keyframes vup{from{opacity:1}to{transform:translateY(-16px);opacity:0}}
+@keyframes vsway{0%,49%{transform:translateX(-1px)}50%,to{transform:translateX(1px)}}
 `.replaceAll('\n', '')
 
 const ZOLTRAAK_CSS = `${BASE_CSS}

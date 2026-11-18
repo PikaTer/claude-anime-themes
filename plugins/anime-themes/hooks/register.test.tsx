@@ -3,6 +3,7 @@ import type { Engine } from 'claude-code/testing'
 
 import { lands } from './themes/ina-pixel-dark'
 import { ASLEEP, ask, carry, cheer, doze, draw, join, leave, missingGlyphs, rest, resume, speechMarkup, wake } from './themes/ina-pixel-dark/scene.js'
+import { showParts } from './themes/ina-pixel-dark/special.js'
 import type { Scene } from '../types'
 
 const BACKDROP = {
@@ -265,6 +266,33 @@ test('cat ears for her takodachis and for Ao-chan, who also gets a tail', () => 
   expect(next.takos[0]?.ears).toBe(true)
   expect(draw(next)).toContain('id="cear"')
   expect(draw(next)).toContain('href="#cear"')
+})
+
+test("cat Ina's shows: a cat-eared trophy, and Ao-chan's show turned to love", () => {
+  const T = 100000
+  const cat = join(wake(ASLEEP, CAT), 'a')
+  const trophy = TURNS.find(id => cheer(cat, id, T).special?.kind === 'trophy') ?? 'none'
+  const tro = draw(cheer(cat, trophy, T))
+
+  expect(tro).toContain('class="v-cup"')
+  // Her lines for the shows, in place of nerd Ina's.
+  const say = (kind: 'trophy' | 'ao', cat: boolean) => showParts(kind, { say: (text: string) => `[${text}]`, mouth: '', nerd: !cat, cat }).front
+  expect(say('trophy', true)).toContain("[ANOTHER\nGOLD TROPHY\nFOR NINYOMANYO\nNINYA'NIS!]")
+  expect(say('ao', true)).toContain('[WORLD\nDOM{INYA}TION]')
+  expect(say('trophy', false)).toContain("[ANOTHER\nGOLD TROPHY\nFOR NINOMAE\nINA'NIS!]")
+  const love = draw(cheer(join(wake(ASLEEP, CAT_AO), 'a'), 'x', T))
+  for (const part of ['class="v-ht"', 'href="#v-he"', 'class="ac"', 'class="v-lv"']) {
+    expect(love).toContain(part)
+  }
+  for (const part of ['href="#v-tf"', 'class="v-red"', 'class="v-aura"']) {
+    expect(love).not.toContain(part)
+  }
+  // Nerd Ina's shows are untouched.
+  const nerd = draw(cheer(join(wake(ASLEEP, AO), 'a'), 'x', T))
+  expect(nerd).toContain('class="v-aura"')
+  expect(nerd).toContain('href="#v-tf"')
+  expect(nerd).not.toContain('class="v-ht"')
+  expect(draw(cheer(join(wake(ASLEEP, 't'), 'a'), trophy, T))).not.toContain('class="v-cup"')
 })
 
 test('cat Ina keeps her heart circle inside its budget', () => {
