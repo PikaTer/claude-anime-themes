@@ -256,6 +256,28 @@ test('Frieren Ina comes up on about one wake in four, with every face', () => {
   expect(wake(ASLEEP, 't1').form).toBe('nerd')
 })
 
+test('her hair ends are rolled as she wakes, any of six alike, and kept till she next wakes', () => {
+  const woke = TURNS.map(id => wake(ASLEEP, id))
+  const kinds = ['classic', 'flick', 'curl', 'long', 'split', 'flared'] as const
+
+  for (const kind of kinds) {
+    const count = woke.filter(scene => scene.hair === kind).length
+    expect(count).toBeGreaterThan(40)
+    expect(count).toBeLessThan(100)
+  }
+  // Each draws its own head, for nerd and Frieren Ina alike.
+  const drawn = kinds.map(kind => draw({ ...wake(ASLEEP, 't'), hair: kind }))
+  expect(new Set(drawn).size).toBe(kinds.length)
+  const fr = wake(ASLEEP, FRIEREN)
+  expect(draw({ ...fr, hair: 'flick' })).not.toBe(draw({ ...fr, hair: 'curl' }))
+
+  // Through a turn, a question, a takodachi and her dozing off, they stay.
+  const one = woke.find(scene => scene.hair !== 'classic') ?? woke[0]
+  const later = doze(join(resume(ask(wake(one, 'more'), 'q'), 'q'), 'a'), 'd', 'done')
+  expect(later.hair).toBe(one.hair)
+  expect(join(later, 'b').hair).toBe(one.hair)
+})
+
 test("Frieren's turn keeps her through questions, and the next change after she dozes is regular Ina", () => {
   const fr = wake(ASLEEP, FRIEREN)
   const asked = resume(ask(fr, 'q'), 'q')

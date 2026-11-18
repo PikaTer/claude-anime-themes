@@ -5,8 +5,9 @@ import { COVER, FAREWELL, FR_SAY, FR_WAKE, GLINT, KANA, STAFF, frierenBack, frie
 import { AO_BYE, AO_CSS, AO_DEFS, AO_GET, AO_HI, AO_SAY, AO_SPARKS, aoChan } from './ao.js'
 import { FIRE, SHOW, SHOW_SAY, showParts, takoShow } from './special.js'
 
-// Ina's head, left half: 42 x 32 once mirrored.
-const HEAD = mirror([
+// Ina's head, left half: 42 x 32 once mirrored, down to where her hair hangs
+// free of her cheeks. Its ends are one of HAIR's.
+const CROWN = [
   '......oooo...........',
   '.....ohhhho..........',
   '....ohHhhhho.........',
@@ -31,15 +32,23 @@ const HEAD = mirror([
   '...ohhhhosbbbssssssss',
   '...ohhhhosbbbssssssss',
   '...ohhhhossssssssssss',
-  '...ohhhhhosssssssssss',
-  '...ohhhhhhossssssssss',
-  '...ohyyhhhhoossssssss',
-  '...oyyYyhho.oooosssss',
-  '...oyYyyho......ooooo',
-  '...oyyyyo............',
-  '....oyyo.............',
-  '.....oo..............',
-])
+]
+// The ends of her hair, orange-tipped, each its own first 12 columns, then
+// her cheek and chin's. One is picked each time she wakes.
+const CHEEK = ['sssssssss', 'sssssssss', 'ossssssss', 'oooosssss', '....ooooo']
+const HAIR = {
+  classic: ['...ohhhhhoss', '...ohhhhhhos', '...ohyyhhhho', '...oyyYyhho.', '...oyYyyho..', '...oyyyyo...', '....oyyo....', '.....oo.....'],
+  flick: ['...ohhhhhoss', '...ohhhhhhos', '...ohyyhhhho', '..oyyYyhho..', '.oyYyyyho...', 'oyyyyoo.....', 'oyyo........', '.oo.........'],
+  curl: ['...ohhhhhoss', '...ohhhhhhos', '...ohyyhhhho', '...oyyYyhho.', '....oyYyyyo.', '.....oyyyyyo', '......oyyyo.', '.......ooo..'],
+  long: ['...ohhhhhoss', '...ohhhhhhos', '...ohhhhhhho', '...ohhhhhho.', '...ohhhhho..', '...ohyyyho..', '...oyyYyyo..', '...oyYyyyo..', '....oyyyo...', '.....ooo....'],
+  split: ['...ohhhhhoss', '...ohhhhhhos', '...ohyyhhhho', '...oyyYyhho.', '...oyYyyyo..', '...oyyoyyo..', '....oo.oo...'],
+  flared: ['...ohhhhhoss', '...ohhhhhhos', '...ohyyhhhho', '..oyyYyyhho.', '.oyYyyyyyo..', '.oyyyyyyyo..', '..ooooooo...'],
+}
+const HEADS = Object.fromEntries(
+  Object.entries(HAIR).map(([kind, ends]) => [kind, px(mirror([...CROWN, ...ends.map((end, i) => end + (CHEEK[i] ?? '.........'))]))]),
+)
+const HAIRS = Object.keys(HAIR)
+const headOf = hair => HEADS[hair] ?? HEADS.classic
 const W = 42
 
 const AHOGE = px(['.oo.', 'ohho', '.oho'], 20, 0)
@@ -374,8 +383,8 @@ const STARS = (() => {
   return stars
 })()
 
-const HEAD_ART =
-  `${AHOGE}${px(HEAD)}<g class="closed">${CLOSED}</g><g class="half">${HALF}</g><g class="open">${OPEN}</g>${MOUTH}`
+const headArt = hair =>
+  `${AHOGE}${headOf(hair)}<g class="closed">${CLOSED}</g><g class="half">${HALF}</g><g class="open">${OPEN}</g>${MOUTH}`
 const GLASSES = `<g class="glasses">${BRIDGE}<g class="sa">${lenses(SWIRL_A)}</g><g class="sb">${lenses(SWIRL_B)}</g></g>`
 
 /** How one of Ina's lines plays: a looping, a one-time, or a standing style. */
@@ -401,8 +410,8 @@ function ina(scene, said, wahs, parts, hold) {
   const summoning =
     frieren && scene.ina === 'wake' ? summonFx(0, true) : frieren && scene.ina === 'doze' ? summonFx(2.4 + hold, false) : ''
   const heads = frieren
-    ? `<g class="nh">${HEAD_ART}</g><g class="fh">${frierenBack()}${AHOGE}${px(HEAD)}${frierenFront(scene.face)}</g>`
-    : `<g class="nh">${HEAD_ART}${GLASSES}</g>`
+    ? `<g class="nh">${headArt(scene.hair)}</g><g class="fh">${frierenBack()}${AHOGE}${headOf(scene.hair)}${frierenFront(scene.face)}</g>`
+    : `<g class="nh">${headArt(scene.hair)}${GLASSES}</g>`
 
   const head = `<g class="head">${heads}${mouths}${parts?.face ?? ''}</g>`
 
@@ -718,7 +727,7 @@ export function draw(scene, { left = 0, right = 0 } = {}) {
   )
 }
 
-export const ASLEEP = { ina: 'sleep', cue: 'none', seed: 0, form: 'nerd', face: 'plain', ao: false, special: null, takos: [] }
+export const ASLEEP = { ina: 'sleep', cue: 'none', seed: 0, form: 'nerd', face: 'plain', hair: 'classic', ao: false, special: null, takos: [] }
 
 const working = scene => scene.ina === 'wake' || scene.ina === 'work'
 const asleep = scene => scene.ina === 'sleep' || scene.ina === 'doze'
@@ -733,6 +742,8 @@ const settle = (scene, id) => ({
   // Frieren Ina leaves as she dozes: what wakes next is regular Ina, or a new roll.
   form: scene.ina === 'doze' ? 'nerd' : scene.form,
   face: scene.ina === 'doze' ? 'plain' : scene.face,
+  // Her hair keeps its ends till she next wakes from sleep.
+  hair: scene.hair ?? 'classic',
   // Ao-chan goes home as Ina dozes.
   ao: scene.ina === 'doze' ? false : scene.ao,
   // A show runs on through changes only by `carry`.
@@ -744,7 +755,8 @@ const FACES = ['plain', 'smug', 'cute']
 
 /**
  * The main agent starts a turn. From sleep, one wake in four summons Frieren
- * Ina, and, on a roll of her own, one in five brings Ao-chan along. With `now`
+ * Ina, and, on a roll of her own, one in five brings Ao-chan along. Her hair's
+ * ends are rolled too, any of six alike. With `now`
  * (milliseconds, `$.clock.now()`'s), the turn opens with a show once she is up.
  */
 export function wake(scene, id, now) {
@@ -755,10 +767,11 @@ export function wake(scene, id, now) {
   }
   const roll = hash(`frieren:${id}`)
   const ao = hash(`ao:${id}`) % 5 === 0
+  const hair = HAIRS[hash(`hair:${id}`) % HAIRS.length]
   const woke =
     roll % 4 === 0
-      ? { ...next, ina: 'wake', form: 'frieren', face: FACES[(roll >>> 8) % FACES.length], ao }
-      : { ...next, ina: 'wake', form: 'nerd', face: 'plain', ao }
+      ? { ...next, ina: 'wake', form: 'frieren', face: FACES[(roll >>> 8) % FACES.length], hair, ao }
+      : { ...next, ina: 'wake', form: 'nerd', face: 'plain', hair, ao }
 
   // Her greeting first: Frieren Ina's summoning, or nerd Ina's wake line.
   return now === undefined ? woke : stage(woke, id, now, woke.form === 'frieren' ? 4 : 3.1)

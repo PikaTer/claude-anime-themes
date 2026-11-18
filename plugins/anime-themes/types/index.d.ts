@@ -44,6 +44,8 @@ export type Scene = {
   form: 'nerd' | 'frieren'
   /** Frieren Ina's face this turn; `plain` for nerd Ina. */
   face: 'plain' | 'smug' | 'cute'
+  /** The ends of her hair, rolled as she wakes from sleep and kept till she next does. */
+  hair: 'classic' | 'flick' | 'curl' | 'long' | 'split' | 'flared'
   /** Ao-chan, Ina's grimoire, came this turn: one wake in five. */
   ao: boolean
   /** The show Ina puts on as work lands (a commit, a deploy, a merge), while it plays. */
