@@ -5,6 +5,7 @@ import { lands } from './themes/ina-pixel-dark'
 import { ASLEEP, ask, carry, cheer, doze, draw, join, leave, missingGlyphs, rest, resume, speechMarkup, wake } from './themes/ina-pixel-dark/scene.js'
 import { showParts } from './themes/ina-pixel-dark/special.js'
 import { CAT_SAY } from './themes/ina-pixel-dark/cat.js'
+import { rollHold, tentacles } from './themes/ina-pixel-dark/held.js'
 import type { Scene } from '../types'
 
 const BACKDROP = {
@@ -18,6 +19,10 @@ const BACKDROP = {
 const TAKO = '<use href="#tako"/>'
 const ECHO = '<use href="#wah"'
 const count = (text: string, part: string) => text.split(part).length - 1
+
+// What the corner tentacles hold: nothing, or a takodachi each, wrapped.
+const NONE = { high: 'none', low: 'none' } as const
+const WRAP = { high: 'wrap', low: 'wrap' } as const
 
 const DONE = { durationMs: 1, isAborted: false, reason: 'answer' } as const
 
@@ -924,4 +929,36 @@ test('Zoltraak fires at the takodachis, or at the sky with none on screen, and h
   expect(leaving.special?.aim).toBe('up')
   // The other shows take no aim.
   expect(cheer(wake(ASLEEP, 't'), 'x', T).special?.aim).toBeUndefined()
+})
+
+test('each tentacle is rolled on its own: a quarter wrap, a quarter ride', () => {
+  const seq = (...xs: number[]) => () => xs.shift() ?? 0.9
+  expect(rollHold(seq(0.1, 0.3))).toEqual({ high: 'wrap', low: 'ride' })
+  expect(rollHold(seq(0.6, 0.24))).toEqual({ high: 'none', low: 'wrap' })
+  const rolls = Array.from({ length: 4000 }, () => rollHold())
+  for (const grip of ['wrap', 'ride'] as const) {
+    for (const side of ['high', 'low'] as const) {
+      const share = rolls.filter(roll => roll[side] === grip).length / 4000
+      expect(share).toBeGreaterThan(0.21)
+      expect(share).toBeLessThan(0.29)
+    }
+  }
+})
+
+test('a wrapped tentacle curls round its takodachi; a ridden one is unchanged', () => {
+  const bare = tentacles(NONE)
+  const ride = tentacles({ high: 'ride', low: 'ride' })
+  const wrap = tentacles(WRAP)
+
+  expect(bare.high + bare.low).not.toContain('class="hold"')
+  expect(ride.high).toContain(bare.high)
+  expect(ride.low).toContain(bare.low)
+  expect(wrap.high).not.toContain(bare.high)
+  expect(wrap.low).not.toContain(bare.low)
+  for (const part of [ride.high, ride.low, wrap.high, wrap.low]) {
+    expect(count(part, 'class="hold"')).toBe(1)
+    expect(count(part, TAKO)).toBe(1)
+  }
+  expect(wrap.low).toContain('scale(.8)')
+  expect(ride.low).not.toContain('scale(.8)')
 })
