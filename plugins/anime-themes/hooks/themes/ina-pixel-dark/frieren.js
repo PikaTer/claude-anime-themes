@@ -114,19 +114,28 @@ export const summonFx = (start, beam) =>
 
 // Tentacles that rise out of the circle's foot, over her, and sink again: the
 // clip is the circle's lower edge, so they come out of it and go back in.
-const COVER_ART = (() => {
-  const side = tentacle(86, curls(0.25, -2.6), 9, 'uUq', 4)
-  const middle = tentacle(84, curls(0.2, 0.6), 12, 'uUq', 7)
-  const flipped = side.rows.map(row => [...row].reverse().join(''))
-  const width = side.rows[0].length
-  const foot = 66
+// Seven across the circle, shorter further out: the edge pair and the inner
+// pair curl in towards her, the pair between them away. Each is drawn on the
+// left and mirrored across her middle, the outer ones first, behind, and plain:
+// the scene has a size limit. A dark rim a pixel wide sets each apart.
+const ARMS = [
+  // [root, length, sway, curl, thickness, tip, colors]: a curl over 0 turns left.
+  [-14, 70, 0.3, -4.5, 6, 1.5, 'uuq'],
+  [-2, 82, -0.25, 4, 7, 2, 'uuq'],
+  [10, 86, 0.25, -2.6, 9, 4, 'uUq'],
+]
+function arm(root, length, sway, curl, thick, tip, colors) {
+  const at = (width, tip, colors) => {
+    const { rows, root: from } = tentacle(length, curls(sway, curl), width, colors, tip)
 
-  return (
-    px(middle.rows, 21 - middle.root, foot - middle.rows.length) +
-    px(side.rows, 10 - side.root, foot - side.rows.length) +
-    px(flipped, 32 - (width - 1 - side.root), foot - side.rows.length)
-  )
-})()
+    return px(rows, root - from, 66 - rows.length)
+  }
+
+  return at(thick + 1, tip + 1, 'ooo') + at(thick, tip, colors)
+}
+const COVER_ART =
+  ARMS.map((pair, i) => `<g id="arm${i}">${arm(...pair)}</g><use href="#arm${i}" transform="matrix(-1 0 0 1 43 0)"/>`).join('') +
+  arm(21, 84, 0.2, 0.6, 12, 7, 'uUq')
 export const COVER =
   '<clipPath id="cv"><rect x="-80" y="-120" width="200" height="184"/></clipPath>' +
   `<g clip-path="url(#cv)"><g class="cover">${COVER_ART}</g></g>`
