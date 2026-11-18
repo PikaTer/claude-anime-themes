@@ -16,6 +16,20 @@ export type Tako = {
   phase: 'in' | 'on' | 'out'
 }
 
+/**
+ * A show: a gold trophy or Ao-chan's world domINAtion for nerd Ina, Zoltraak
+ * for Frieren Ina. Times are milliseconds, as `$.clock.now()` gives them.
+ */
+export type Show = {
+  kind: 'trophy' | 'ao' | 'zoltraak'
+  /** When it starts: after a wake's greeting, it can be ahead of `now`. */
+  at: number
+  /** When the scene holding it was made, so a redraw picks the show up where it is. */
+  now: number
+  /** Zoltraak's: at the takodachis, or at the sky when none is on screen. Settled once it fires. */
+  aim?: 'left' | 'up'
+}
+
 /** How the main turn ended: on a question, done, interrupted, or on an error. */
 export type Ending = 'ask' | 'done' | 'stop' | 'oops'
 
@@ -32,6 +46,8 @@ export type Scene = {
   face: 'plain' | 'smug' | 'cute'
   /** Ao-chan, Ina's grimoire, came this turn: one wake in five. */
   ao: boolean
+  /** The show Ina puts on as work lands (a commit, a deploy, a merge), while it plays. */
+  special: Show | null
   takos: Tako[]
 }
 

@@ -1,7 +1,9 @@
 import { expect, mock, test } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 
-import { ASLEEP, ask, doze, draw, join, leave, missingGlyphs, resume, speechMarkup, wake } from './themes/ina-pixel-dark/scene.js'
+import { lands } from './themes/ina-pixel-dark'
+import { ASLEEP, ask, carry, cheer, doze, draw, join, leave, missingGlyphs, rest, resume, speechMarkup, wake } from './themes/ina-pixel-dark/scene.js'
+import type { Scene } from '../types'
 
 const BACKDROP = {
   plugin: 'anime-themes',
@@ -532,3 +534,179 @@ for (const surface of ['terminal', 'desktop'] as const) {
     await ui.unmount()
   })
 }
+
+// A clock time for the shows, in milliseconds.
+const T = 1_000_000
+// What a show draws, and a takodachi's part in it.
+const SHOWN = /class="v-|href="#v-/
+const after = (scene: Scene, change: (scene: Scene) => Scene, ms: number) => carry(scene, change(scene), ms)
+const crew = (scene: Scene) => ['a1', 'b22', 'c333'].reduce((now, id) => after(now, next => join(next, id), T), scene)
+
+test('work landing puts on a show: Zoltraak for Frieren Ina, Ao-chan while she is out, else mostly a gold trophy', () => {
+  const nerd = wake(ASLEEP, 't')
+  const kinds = TURNS.map(id => cheer(nerd, id, T).special?.kind)
+  const trophies = kinds.filter(kind => kind === 'trophy').length
+
+  // Ao-chan comes for one in three of nerd Ina's shows, and stays the turn.
+  expect(trophies).toBeGreaterThan(220)
+  expect(trophies).toBeLessThan(320)
+  expect(kinds.filter(kind => kind === 'ao').length).toBe(TURNS.length - trophies)
+  const summoned = TURNS.find(id => cheer(nerd, id, T).special?.kind === 'ao') ?? 'none'
+  expect(cheer(nerd, summoned, T).ao).toBe(true)
+  expect(cheer(wake(ASLEEP, AO), 'x', T).special?.kind).toBe('ao')
+  expect(cheer(wake(ASLEEP, FRIEREN), 'x', T).special?.kind).toBe('zoltraak')
+  expect(cheer(wake(ASLEEP, BOTH), 'x', T).special?.kind).toBe('zoltraak')
+  // Only while she works, and never over a show that is on.
+  expect(cheer(ASLEEP, 'x', T)).toBe(ASLEEP)
+  const held = ask(nerd, 'q')
+  expect(cheer(held, 'x', T)).toBe(held)
+  const on = cheer(nerd, 'x', T)
+  expect(on.special).toMatchObject({ at: T + 200, now: T })
+  expect(cheer(on, 'y', T + 3000)).toBe(on)
+  expect(cheer(on, 'y', T + 8000).special?.at).toBe(T + 8200)
+})
+
+test('a show runs on through the turn and ends on time, on a question, or with the next turn', () => {
+  const on = cheer(wake(ASLEEP, 't'), 'x', T)
+  const joined = after(on, now => join(now, 'a'), T + 1000)
+  const dozing = after(joined, now => doze(now, 'd', 'done'), T + 2000)
+
+  expect(joined.special).toEqual({ ...on.special, now: T + 1000 })
+  expect(dozing.special?.now).toBe(T + 2000)
+  expect(carry(on, on, T + 500).special?.now).toBe(T + 500)
+  expect(after(on, now => leave(now, 'a'), T + 7300).special).toBeNull()
+  expect(after(on, now => ask(now, 'q'), T + 1000).special).toBeNull()
+  expect(after(dozing, now => wake(now, 'next'), T + 3000).special).toBeNull()
+  // A turn opened on landing work: the show waits for her greeting.
+  expect(wake(ASLEEP, 't', T).special?.at).toBe(T + 3100)
+  expect(wake(ASLEEP, FRIEREN, T).special).toMatchObject({ kind: 'zoltraak', at: T + 4000 })
+  // Long over, the show leaves, and what it held up has played: nothing plays again.
+  expect(rest(dozing)).toMatchObject({ ina: 'sleep', special: null })
+  expect(rest(wake(ASLEEP, 't', T))).toMatchObject({ ina: 'work', special: null })
+  const rested = draw(rest(joined))
+  expect(rested).not.toMatch(SHOWN)
+  expect(rested).not.toContain('class="in e-')
+  expect(rested).not.toMatch(/class="say" style="animation:on/)
+})
+
+test('each show draws its stage and every takodachi its part, and holds back her lines and her doze', () => {
+  const trophy = TURNS.find(id => cheer(wake(ASLEEP, 't'), id, T).special?.kind === 'trophy') ?? 'none'
+  const shows = [
+    [cheer(crew(wake(ASLEEP, 't')), trophy, T), 'class="v-tro"', 'href="#v-sg"'],
+    [cheer(crew(wake(ASLEEP, AO)), 'x', T), 'class="v-fly"', 'href="#v-tf"'],
+    [cheer(crew(wake(ASLEEP, FRIEREN)), 'x', T), 'class="v-mc"', 'href="#v-br"'],
+  ] as const
+
+  for (const [scene, stage, part] of shows) {
+    const svg = draw(scene)
+
+    expect(svg).toContain(stage)
+    expect(svg).toContain(` s-${scene.special?.kind}"`)
+    expect(count(svg, part)).toBe(3)
+    expect(svg).toContain('class="v-say"')
+    // Her WAH waits till the show is over: 4 s, after 0.2 + 7.
+    expect(svg).toContain('animation:say 24s steps(1) 11.2s infinite')
+    expect(svg).not.toContain('animation:say 24s steps(1) 4s infinite')
+    for (const [other] of shows.filter(([, otherStage]) => otherStage !== stage)) {
+      expect(svg).not.toContain(` s-${other.special?.kind}"`)
+    }
+  }
+  const [[on]] = shows
+  // Picked up partway through on a redraw, and gone once it is over.
+  expect(draw(after(on, now => join(now, 'z'), T + 3200))).toContain('--x:-3.00s')
+  expect(draw({ ...on, special: on.special && { ...on.special, now: T + 7300 } })).not.toMatch(SHOWN)
+  // She dozes off once it ends: her line and her lull wait for it.
+  expect(draw(after(on, now => doze(now, 'd', 'done'), T + 2000))).toContain('--h:5.2s')
+  // Never without a show, asleep, or on a question.
+  for (const scene of [wake(ASLEEP, 't'), ASLEEP, ask(on, 'q'), rest(after(on, now => doze(now, 'd'), T))]) {
+    expect(draw(scene)).not.toMatch(SHOWN)
+  }
+})
+
+test('every show fits the limit with Frieren Ina, Ao-chan and every takodachi coming and going', () => {
+  const ids = Array.from({ length: 14 }, (_, i) => `agent-${i * 7919}`)
+
+  for (const id of ['t', AO, BOTH]) {
+    const busy = ids.reduce(join, wake(ASLEEP, id))
+    const shown = cheer(busy, 'x', T)
+    const going = after(shown, now => ids.reduce(leave, now), T + 500)
+    const parting = after(going, now => doze(now, 'd', 'ask'), T + 1000)
+    const svg = draw({ ...parting, takos: [...busy.takos.map(tako => ({ ...tako, phase: 'in' as const })), ...going.takos] })
+
+    expect(svg).toMatch(SHOWN)
+    expect(svg.length).toBeLessThan(131072)
+  }
+})
+
+test('commits, deploys and merges count as work landing; reading about them does not', () => {
+  for (const command of ['git commit -m "x"', 'git add . && git commit', 'git log -1 && git commit --amend', 'git merge main', 'gh pr merge 12 --squash', 'vercel deploy --prod', 'npm run deploy']) {
+    expect(lands('Bash', { command })).toBe(true)
+  }
+  for (const command of ['git log', 'git merge-base main HEAD', 'echo emerge', 'ls', 'cat deploy.yml', 'ls deploy/', 'git log --grep=merge', 'grep -rn commit src']) {
+    expect(lands('Bash', { command })).toBe(false)
+  }
+  for (const tool of ['mcp__vercel__deploy_to_vercel', 'mcp__vercel__create_deployment', 'mcp__github__merge_pull_request']) {
+    expect(lands(tool, {})).toBe(true)
+  }
+  for (const tool of ['mcp__vercel__get_deployment', 'mcp__vercel__list_deployments', 'mcp__vercel__cancel_deployment', 'Read', 'Edit']) {
+    expect(lands(tool, {})).toBe(false)
+  }
+})
+
+test('a prompt about committing and a commit that ran each put on a show, which leaves once it is over', async ($, on) => {
+  mock.store(on)
+  const clock = mock.clock(on, { now: T })
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('theme.set', () => ({ value: { isDrawn: true, requestId: 'backdrop' } }))
+  on('command.register', (_, e) => ({ value: { command: e.name } }))
+  on('turn.start', (_, e) => ({ turnId: e.turnId }))
+  on('classic.PostToolUse', () => ({}))
+
+  const source = async () => {
+    const ui = await $.ui.mount(BACKDROP)
+    const svg = await ui.find({ type: 'Svg' })
+    await ui.unmount()
+
+    return String(svg?.props.source)
+  }
+  const ran = (command: string, id: string) =>
+    $.classic.PostToolUse({ tool_name: 'Bash', tool_input: { command }, tool_response: {}, tool_use_id: id })
+
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.turn.start({ text: 'Looks good, commit it', turnId: 't1' })
+  const opening = await source()
+  expect(opening).toMatch(/class="wake[^"]* s-(trophy|ao)"/)
+  // A commit while the show plays changes nothing: no redraw to play her wake again.
+  await clock.advance(2000)
+  await ran('git commit -m "Ship it"', 'u0')
+  expect(await source()).toBe(opening)
+  // Over, and Ina has had her say: the show leaves, and the wake is played.
+  await clock.advance(20_000)
+  const quiet = await source()
+  expect(quiet).not.toMatch(SHOWN)
+  expect(quiet).toContain('class="work')
+
+  await ran('git status', 'u1')
+  expect(await source()).not.toMatch(SHOWN)
+  await ran('git commit -m "Ship it"', 'u2')
+  expect(await source()).toMatch(/class="work[^"]* s-(trophy|ao)"/)
+})
+
+test('Zoltraak fires at the takodachis, or at the sky with none on screen, and holds its aim once fired', () => {
+  const alone = cheer(wake(ASLEEP, FRIEREN), 'x', T)
+  const company = cheer(crew(wake(ASLEEP, FRIEREN)), 'x', T)
+
+  expect(alone.special?.aim).toBe('up')
+  expect(company.special?.aim).toBe('left')
+  expect(draw(alone)).toContain('class="v-beam v-sky"')
+  expect(draw(company)).toContain('class="v-beam"')
+  expect(draw(company)).not.toContain('class="v-beam v-sky"')
+  // A takodachi that comes while it charges draws its aim; one that comes after it fired does not.
+  expect(after(alone, now => join(now, 'a'), T + 1000).special?.aim).toBe('left')
+  expect(after(alone, now => join(now, 'a'), T + 3000).special?.aim).toBe('up')
+  // The last takodachi leaving while it charges turns it to the sky; a takodachi on its way out does not count.
+  const leaving = ['a1', 'b22', 'c333'].reduce((now, id) => after(now, next => leave(next, id), T + 500), company)
+  expect(leaving.special?.aim).toBe('up')
+  // The other shows take no aim.
+  expect(cheer(wake(ASLEEP, 't'), 'x', T).special?.aim).toBeUndefined()
+})

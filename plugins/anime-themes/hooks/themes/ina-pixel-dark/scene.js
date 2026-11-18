@@ -3,6 +3,7 @@
 import { both, curls, grid, line, mirror, plot, px, round, rows, tentacle } from './pixels.js'
 import { COVER, FAREWELL, FR_SAY, FR_WAKE, GLINT, KANA, STAFF, frierenBack, frierenFront, summonFx } from './frieren.js'
 import { AO_BYE, AO_CSS, AO_DEFS, AO_GET, AO_HI, AO_SAY, AO_SPARKS, aoChan } from './ao.js'
+import { FIRE, SHOW, SHOW_SAY, showParts, takoShow } from './special.js'
 
 // Ina's head, left half: 42 x 32 once mirrored.
 const HEAD = mirror([
@@ -109,9 +110,23 @@ const FONT = Object.fromEntries(
   }).map(([char, glyph]) => [char, glyph.split('/')]),
 )
 
-/** One line of text as rows of pixels: five, or seven where it has kana, letters set on the line's foot. */
+/**
+ * One line of text as rows of pixels: five, or seven where it has kana, letters
+ * set on the line's foot. Letters between `{` and `}` are drawn in pink.
+ */
 function letters(text) {
-  const glyphs = [...text].map(char => FONT[char] ?? FONT[' '])
+  let pink = false
+  const glyphs = []
+
+  for (const char of text) {
+    if (char === '{' || char === '}') {
+      pink = char === '{'
+      continue
+    }
+    const glyph = FONT[char] ?? FONT[' ']
+
+    glyphs.push(pink ? glyph.map(row => row.replaceAll('x', 'P')) : glyph)
+  }
   const height = Math.max(...glyphs.map(glyph => glyph.length))
 
   return Array.from({ length: height }, (_, y) =>
@@ -144,6 +159,16 @@ function speech(text) {
   return px(rows, 44 - rows[1].length, -1 - rows.length)
 }
 export const speechMarkup = speech
+
+/**
+ * A show's line: over what rises above Ina's head, its foot at `bottom`, kept
+ * to the right like her own lines so it stays clear of the takodachis.
+ */
+function overHead(text, bottom, right = 44) {
+  const rows = bubble(text, 5)
+
+  return px(rows, right - rows[1].length, bottom + 1 - rows.length)
+}
 
 // What Ina says, by what just happened. Upper case: the font has no other.
 const SAY = {
@@ -220,9 +245,9 @@ function lines({ ina, cue, seed, form, ao }) {
 
 /** Characters of Ina's lines the pixel font cannot draw: empty when every line can be drawn. */
 export function missingGlyphs() {
-  const all = [...Object.values(SAY).flat(), ...FR_SAY, FR_WAKE, FAREWELL, ...AO_SAY, AO_HI, AO_GET, AO_BYE, 'WAH!']
+  const all = [...Object.values(SAY).flat(), ...FR_SAY, FR_WAKE, FAREWELL, ...AO_SAY, AO_HI, AO_GET, AO_BYE, 'WAH!', ...Object.values(SHOW_SAY)]
 
-  return [...new Set(all.join('').replaceAll('\n', ''))].filter(char => FONT[char] === undefined)
+  return [...new Set(all.join('').replace(/[\n{}]/g, ''))].filter(char => FONT[char] === undefined)
 }
 
 // A summoning circle behind Ina's head: rings, rune ticks, a triangle.
@@ -360,7 +385,7 @@ const plays = (slot, delay, loop, once) =>
 /** A line that stays: up at once, or hidden until its moment. */
 const stays = slot => (slot.at > 1 ? `opacity:1;animation:off ${slot.at}s` : 'opacity:1')
 
-function ina(scene, said, wahs) {
+function ina(scene, said, wahs, parts, hold) {
   const frieren = scene.form === 'frieren'
   const bubbles = said
     .map(slot => `<g class="say" style="${plays(slot, slot.at, 'say', `on ${slot.dur ?? 2.4}s`) || stays(slot)}">${speech(slot.text)}</g>`)
@@ -374,15 +399,18 @@ function ina(scene, said, wahs) {
   // Frieren Ina's turn: her head, and regular Ina's, without glasses, for either
   // side of the summoning. The light and the tentacles only as she comes and goes.
   const summoning =
-    frieren && scene.ina === 'wake' ? summonFx(0, true) : frieren && scene.ina === 'doze' ? summonFx(2.4, false) : ''
+    frieren && scene.ina === 'wake' ? summonFx(0, true) : frieren && scene.ina === 'doze' ? summonFx(2.4 + hold, false) : ''
   const heads = frieren
     ? `<g class="nh">${HEAD_ART}</g><g class="fh">${frierenBack()}${AHOGE}${px(HEAD)}${frierenFront(scene.face)}</g>`
     : `<g class="nh">${HEAD_ART}${GLASSES}</g>`
 
+  const head = `<g class="head">${heads}${mouths}${parts?.face ?? ''}</g>`
+
   return (
-    `<g class="sigil">${SIGIL}</g>${summoning}${aoChan(scene, wahs, { plays, ink: INK })}<g class="zzz">${ZZZ}</g>` +
+    `<g class="sigil">${SIGIL}</g>${summoning}${aoChan(scene, wahs, { plays, ink: INK })}${parts?.back ?? ''}<g class="zzz">${ZZZ}</g>` +
     // Her greeting's sparkles, under the bubbles.
-    `${scene.ao && scene.ina === 'wake' ? AO_SPARKS : ''}${bubbles}<g class="head">${heads}${mouths}</g>${frieren && scene.ina === 'doze' ? COVER : ''}`
+    `${scene.ao && scene.ina === 'wake' ? AO_SPARKS : ''}${bubbles}${parts?.front ?? ''}` +
+    `${parts ? `<g class="v-hd">${head}</g>` : head}${frieren && scene.ina === 'doze' ? COVER : ''}`
   )
 }
 
@@ -504,23 +532,26 @@ function hash(text) {
 }
 
 /** One takodachi where it sits, with what its coming or going needs, and its WAHs. */
-function takodachi(tako, wahs) {
+function takodachi(tako, wahs, show) {
   const how = tako.phase === 'in' ? tako.enter : tako.phase === 'out' ? tako.exit : ''
   const phase = tako.phase === 'in' ? `in e-${how}` : tako.phase === 'out' ? `out x-${how}` : 'on'
   // It answers each of Ina's WAHs a beat later, with a hop.
   const beat = 0.3 + (hash(tako.id) % 5) * 0.12
   const echoes = tako.phase === 'out' ? [] : wahs
+  // Its part in a show: any takodachi not on its way out joins in, on its own beat.
+  const part = show !== null && tako.phase !== 'out' ? takoShow(show.kind) : null
   const body = echoes.reduce(
     (inner, slot) => `<g style="${plays(slot, (slot.at + beat).toFixed(2), 'hop24', 'hop .3s steps(3)')}">${inner}</g>`,
     `<g class="bob" style="animation-delay:-${((tako.cell * 0.37) % 1.4).toFixed(2)}s">` +
       (tako.staff ? `<use href="#staff"/><g class="glint" style="animation-delay:-${(beat * 4).toFixed(2)}s">${GLINT}</g>` : '') +
-      `<use href="#tako"/>${tako.kind === 'cookie' ? COOKIE : LAPTOP}</g>`,
+      `<use href="#tako"/>${tako.kind === 'cookie' ? COOKIE : LAPTOP}${part?.on ?? ''}</g>`,
   )
 
   return (
-    `<svg y="${tako.y}%" overflow="visible"><g class="tako-s"><g transform="translate(${tako.x} 0)">` +
+    `<svg y="${tako.y}%" overflow="visible"><g class="tako-s"><g transform="translate(${tako.x} 0)"${part ? ` style="--k:${(beat - 0.3).toFixed(2)}s"` : ''}>` +
     (how === 'circle' ? '<use href="#ring" class="p-ring"/>' : '') +
-    `<g class="${phase}">${body}${how === 'tentacle' ? '<use href="#grab" class="arm"/>' : ''}</g>` +
+    `<g class="${phase}">${part ? part.wrap(body) : body}${how === 'tentacle' ? '<use href="#grab" class="arm"/>' : ''}</g>` +
+    (part?.by ?? '') +
     (how === 'ink' ? INK : '') +
     echoes
       .map(slot => `<use href="#wah" class="say" style="${plays(slot, (slot.at + beat).toFixed(2), 'say', 'on 1.6s')}"/>`)
@@ -579,14 +610,14 @@ const CSS = `
 .f.work .nh,.f.wait .nh{opacity:0}
 .f.wake .nh{opacity:0;animation:on 1.3s}
 .f.wake .fh{opacity:1;animation:off 1.3s}
-.f.doze .fh{animation:on 3.6s}
-.f.doze .nh{animation:off 3.6s}
+.f.doze .fh{animation:on calc(var(--h) + 3.6s)}
+.f.doze .nh{animation:off calc(var(--h) + 3.6s)}
 .f.wake .sigil{animation:glow .4s steps(4) backwards,pulse 4s steps(4) 2s infinite}
 .fx .fl{animation:flare 1.8s steps(6) var(--s)}
 .fx .pt{animation:rise 1s steps(5) calc(var(--s) + var(--k)) 2}
 .fx .beam{transform-box:fill-box;transform-origin:center;animation:beam .9s steps(6) calc(var(--s) + .9s)}
 .fx .sp{animation:twinkle .9s steps(3) calc(var(--s) + 1s)}
-.cover{transform:translateY(100px);animation:cover 1.4s steps(7) 3s}
+.cover{transform:translateY(100px);animation:cover 1.4s steps(7) calc(var(--h) + 3s)}
 .glint{animation:glint 2.8s steps(1) infinite}
 @keyframes flare{0%{opacity:.3}60%{opacity:1}to{opacity:0}}
 @keyframes rise{from{opacity:1}to{transform:translateY(-16px);opacity:0}}
@@ -623,17 +654,49 @@ ${AO_CSS}
 `.replaceAll('\n', '')
 
 /**
+ * What Ina says around a show, `hold` seconds from its end: she keeps her lines
+ * till it is over, dozing too, and the ones for what just happened are dropped.
+ * On a wake her greeting comes first: the show waits for it.
+ */
+function waiting(said, scene, hold) {
+  if (hold === 0) {
+    return said
+  }
+  if (scene.ina === 'doze') {
+    return said.map(slot => ({ ...slot, at: slot.at + hold }))
+  }
+
+  return said
+    .filter(slot => scene.ina === 'wake' || slot.kind !== 'once')
+    .map(slot => (slot.kind === 'loop' ? { ...slot, at: slot.at + hold } : slot))
+}
+
+/** The show playing in a scene: its kind and `x`, the seconds till it starts (less than 0 once it has); or `null`. */
+function playing({ special, ina }) {
+  if (special === null || special === undefined || !(ina === 'wake' || ina === 'work' || ina === 'doze')) {
+    return null
+  }
+  const x = (special.at - special.now) / 1000
+
+  return x + SHOW > 0 ? { kind: special.kind, x, aim: special.aim } : null
+}
+
+/**
  * The whole backdrop for a scene state. Asleep or waiting, Ina does not move.
  * `left` and `right` are how far in from the window's edges the sprites stand,
  * in pixels: clear of side panels drawn over the backdrop.
  */
 export function draw(scene, { left = 0, right = 0 } = {}) {
-  const said = lines(scene)
+  const show = playing(scene)
+  // A show holds back what she would say over it, and her dozing off.
+  const hold = show === null ? 0 : show.x + SHOW
+  const said = waiting(lines(scene), scene, hold)
   const wahs = said.filter(slot => slot.kind !== 'stay' && slot.text.includes('WAH'))
   // She finishes her line before she dozes off.
   // Frieren Ina is sent back first, and regular Ina has a moment awake.
-  const lull = scene.form === 'frieren' ? 5 : scene.cue === 'ask' ? 3 : 2.4
-  const state = `${scene.ina}${scene.form === 'frieren' ? ' f' : ''}${scene.ao ? ' a' : ''}`
+  const lull = (scene.form === 'frieren' ? 5 : scene.cue === 'ask' ? 3 : 2.4) + hold
+  const state = `${scene.ina}${scene.form === 'frieren' ? ' f' : ''}${scene.ao ? ' a' : ''}${show === null ? '' : ` s-${show.kind}`}`
+  const parts = show === null ? null : showParts(show.kind, { say: overHead, mouth: MOUTH_OPEN, nerd: scene.form !== 'frieren', aim: show.aim })
   // When Ao-chan rises: as nerd Ina wakes, or once Frieren Ina is summoned.
   const rises = scene.form === 'frieren' ? 1.9 : 0.2
 
@@ -641,21 +704,21 @@ export function draw(scene, { left = 0, right = 0 } = {}) {
   // pixels at any window size, pinned to the edges by the nested svgs. The
   // style fills the view where a surface puts the markup in a page of its own.
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" style="position:fixed;top:0;left:0;width:100vw;height:100vh" shape-rendering="crispEdges"><style>${CSS}</style>` +
-    `<defs><radialGradient id="glow"><stop offset="0" stop-color="#3a2670" stop-opacity=".5"/><stop offset="1" stop-color="#3a2670" stop-opacity="0"/></radialGradient>${DEFS}</defs>` +
+    `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" style="position:fixed;top:0;left:0;width:100vw;height:100vh${show === null ? '' : `;--x:${show.x.toFixed(2)}s`}" shape-rendering="crispEdges"><style>${CSS}${parts?.css ?? ''}</style>` +
+    `<defs><radialGradient id="glow"><stop offset="0" stop-color="#3a2670" stop-opacity=".5"/><stop offset="1" stop-color="#3a2670" stop-opacity="0"/></radialGradient>${DEFS}${parts?.defs ?? ''}</defs>` +
     `<rect width="100%" height="100%" fill="#07050c"/>` +
     `<svg x="100%" y="50%" overflow="visible"><circle cx="${-right - 135}" r="1000" fill="url(#glow)"/></svg>` +
-    `<g class="${scene.ina}">${STARS}</g>` +
+    `<g class="${scene.ina}">${STARS}</g>${parts?.under ?? ''}` +
     `<svg x="100%" overflow="visible"><g transform="translate(${-right} 0)"><g class="ina-s">${TENTACLE_HIGH}</g></g></svg>` +
     `<svg x="100%" y="100%" overflow="visible"><g transform="translate(${-right} 0)"><g class="ina-s">${TENTACLE_LOW}</g></g></svg>` +
     // The takodachis' own left edge: what reaches past it is cut, so a tentacle comes out from behind it.
-    `<svg x="${left}">${scene.takos.map(tako => takodachi(tako, wahs)).join('')}</svg>` +
-    `<svg x="100%" y="50%" overflow="visible"><g transform="translate(${-right} 0)"><g class="ina-s"><g transform="translate(-52 -16)" class="${state}" style="--d:${lull}s;--a:${rises}s">${ina(scene, said, wahs)}</g></g></g></svg>` +
-    `</svg>`
+    `<svg x="${left}">${scene.takos.map(tako => takodachi(tako, wahs, show)).join('')}</svg>` +
+    `<svg x="100%" y="50%" overflow="visible"><g transform="translate(${-right} 0)"><g class="ina-s"><g transform="translate(-52 -16)" class="${state}" style="--d:${lull}s;--a:${rises}s;--h:${hold}s">${ina(scene, said, wahs, parts, hold)}</g></g></g></svg>` +
+    `${parts?.over ?? ''}</svg>`
   )
 }
 
-export const ASLEEP = { ina: 'sleep', cue: 'none', seed: 0, form: 'nerd', face: 'plain', ao: false, takos: [] }
+export const ASLEEP = { ina: 'sleep', cue: 'none', seed: 0, form: 'nerd', face: 'plain', ao: false, special: null, takos: [] }
 
 const working = scene => scene.ina === 'wake' || scene.ina === 'work'
 const asleep = scene => scene.ina === 'sleep' || scene.ina === 'doze'
@@ -672,6 +735,8 @@ const settle = (scene, id) => ({
   face: scene.ina === 'doze' ? 'plain' : scene.face,
   // Ao-chan goes home as Ina dozes.
   ao: scene.ina === 'doze' ? false : scene.ao,
+  // A show runs on through changes only by `carry`.
+  special: null,
   takos: scene.takos.filter(tako => tako.phase !== 'out').map(tako => ({ ...tako, phase: 'on' })),
 })
 
@@ -679,20 +744,77 @@ const FACES = ['plain', 'smug', 'cute']
 
 /**
  * The main agent starts a turn. From sleep, one wake in four summons Frieren
- * Ina, and, on a roll of her own, one in five brings Ao-chan along.
+ * Ina, and, on a roll of her own, one in five brings Ao-chan along. With `now`
+ * (milliseconds, `$.clock.now()`'s), the turn opens with a show once she is up.
  */
-export function wake(scene, id) {
+export function wake(scene, id, now) {
   const next = { ...settle(scene, id), cue: 'none' }
 
   if (!asleep(scene)) {
-    return { ...next, ina: 'work' }
+    return now === undefined || showing(scene, now) ? { ...next, ina: 'work' } : stage({ ...next, ina: 'work' }, id, now, 0.2)
   }
   const roll = hash(`frieren:${id}`)
   const ao = hash(`ao:${id}`) % 5 === 0
+  const woke =
+    roll % 4 === 0
+      ? { ...next, ina: 'wake', form: 'frieren', face: FACES[(roll >>> 8) % FACES.length], ao }
+      : { ...next, ina: 'wake', form: 'nerd', face: 'plain', ao }
 
-  return roll % 4 === 0
-    ? { ...next, ina: 'wake', form: 'frieren', face: FACES[(roll >>> 8) % FACES.length], ao }
-    : { ...next, ina: 'wake', form: 'nerd', face: 'plain', ao }
+  // Her greeting first: Frieren Ina's summoning, or nerd Ina's wake line.
+  return now === undefined ? woke : stage(woke, id, now, woke.form === 'frieren' ? 4 : 3.1)
+}
+
+/** When the scene's show ends, in milliseconds; `undefined` with none. */
+export const showEnds = scene => (scene.special === null || scene.special === undefined ? undefined : scene.special.at + SHOW * 1000)
+
+/**
+ * A show is long over: it leaves the scene, settled as by any change, so a
+ * later redraw plays nothing again (a wake or doze it held up, a takodachi's coming).
+ */
+export const rest = scene => settle(scene, 'rest')
+
+/** Whether a show is still on at `now`. */
+const showing = (scene, now) => scene.special !== null && scene.special !== undefined && now < scene.special.at + SHOW * 1000
+
+/** Where Zoltraak is shot: at the takodachis on screen, or, with none, at the sky. */
+const aimAt = scene => (scene.takos.some(tako => tako.phase !== 'out') ? 'left' : 'up')
+
+/**
+ * A show, `delay` seconds from `now`: Zoltraak for Frieren Ina; for nerd Ina,
+ * Ao-chan's if she is out, else a gold trophy, Ao-chan coming for it on one in three.
+ */
+function stage(scene, id, now, delay) {
+  const kind = scene.form === 'frieren' ? 'zoltraak' : scene.ao || hash(`show:${id}`) % 3 === 0 ? 'ao' : 'trophy'
+
+  const special = { kind, at: now + delay * 1000, now }
+
+  return { ...scene, ao: scene.ao || kind === 'ao', special: kind === 'zoltraak' ? { ...special, aim: aimAt(scene) } : special }
+}
+
+/** Work landed (a commit, a deploy, a merge) at `now`: Ina puts on a show, unless one is on or she is not at work. */
+export const cheer = (scene, id, now) =>
+  !working(scene) || showing(scene, now) ? scene : stage({ ...settle(scene, id), cue: 'none' }, id, now, 0.2)
+
+/**
+ * What a change makes of a show: `after` is the change's scene, made from
+ * `before` at `now`. A show runs on to its end through other changes, a doze
+ * among them; a question or a new turn ends it.
+ */
+export function carry(before, after, now) {
+  if (after.special !== null && after.special !== undefined && after.special !== before.special) {
+    return after
+  }
+  const show = before.special ?? null
+  const on =
+    show !== null &&
+    now < show.at + SHOW * 1000 &&
+    (after.ina === 'wake' || after.ina === 'work' || after.ina === 'doze') &&
+    !(asleep(before) && after.ina === 'wake')
+
+  // Zoltraak takes aim again until it fires: a takodachi that came or went changes it.
+  const aim = show?.aim !== undefined && now < show.at + FIRE * 1000 ? { aim: aimAt(after) } : {}
+
+  return { ...after, special: on ? { ...show, now, ...aim } : null }
 }
 
 /** The main agent's turn ends: `cue` is `done`, `ask`, `stop` or `oops`. */

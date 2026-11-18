@@ -41,6 +41,8 @@ export const PAL = {
   P: '#e24d78', // her eye
   C: '#f4ead2', // her pages
   c: '#b7a98a', // the words on them
+  B: '#9fd8ff', // Zoltraak's light, a takodachi's sweat
+  N: '#0d0716', // Ao-chan's dark aura
 }
 
 /** Rows of pixels to one `<path>` per color, each run of a row one rectangle. */

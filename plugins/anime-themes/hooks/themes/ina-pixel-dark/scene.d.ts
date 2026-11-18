@@ -11,8 +11,16 @@ export const ASLEEP: Scene
 // Each change takes an `id` naming it (a turn's, an agent's, a tool call's),
 // which also picks the lines Ina says next.
 
-/** The main agent starts a turn. */
-export function wake(scene: Scene, id: string): Scene
+/** The main agent starts a turn; with `now` (`$.clock.now()`), it opens with a show. */
+export function wake(scene: Scene, id: string, now?: number): Scene
+/** Work landed (a commit, a deploy, a merge) at `now`: Ina puts on a show, if she is at work and none is on. */
+export function cheer(scene: Scene, id: string, now: number): Scene
+/** When the scene's show ends, in milliseconds; `undefined` with none. */
+export function showEnds(scene: Scene): number | undefined
+/** A show is long over: it leaves the scene, settled as by any change. */
+export function rest(scene: Scene): Scene
+/** `after`, a change made from `before` at `now`, with any show still playing carried on into it. */
+export function carry(before: Scene, after: Scene, now: number): Scene
 /** The main agent's turn ends. */
 export function doze(scene: Scene, id: string, cue?: Ending): Scene
 /** A question is put to the person mid-turn: Ina holds still until `resume`. */
