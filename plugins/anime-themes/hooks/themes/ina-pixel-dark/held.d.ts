@@ -3,7 +3,7 @@ export type Grip = 'none' | 'wrap' | 'ride'
 /** What the tentacle from the top (`high`) and the one from the bottom (`low`) hold. */
 export type Hold = { high: Grip; low: Grip }
 
-/** Each tentacle rolled on its own: a quarter wrap, a quarter ride, otherwise nothing. */
+/** Each tentacle rolled on its own: one in five wrap, one in five ride, otherwise nothing. */
 export function rollHold(random?: () => number): Hold
 
 /**

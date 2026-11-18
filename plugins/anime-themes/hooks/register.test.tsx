@@ -936,16 +936,17 @@ test('Zoltraak fires at the takodachis, or at the sky with none on screen, and h
   expect(cheer(wake(ASLEEP, 't'), 'x', T).special?.aim).toBeUndefined()
 })
 
-test('each tentacle is rolled on its own: a quarter wrap, a quarter ride', () => {
+test('each tentacle is rolled on its own: one in five wrap, one in five ride', () => {
   const seq = (...xs: number[]) => () => xs.shift() ?? 0.9
   expect(rollHold(seq(0.1, 0.3))).toEqual({ high: 'wrap', low: 'ride' })
-  expect(rollHold(seq(0.6, 0.24))).toEqual({ high: 'none', low: 'wrap' })
+  expect(rollHold(seq(0.21, 0.41))).toEqual({ high: 'ride', low: 'none' })
+  expect(rollHold(seq(0.6, 0.19))).toEqual({ high: 'none', low: 'wrap' })
   const rolls = Array.from({ length: 4000 }, () => rollHold())
   for (const grip of ['wrap', 'ride'] as const) {
     for (const side of ['high', 'low'] as const) {
       const share = rolls.filter(roll => roll[side] === grip).length / 4000
-      expect(share).toBeGreaterThan(0.21)
-      expect(share).toBeLessThan(0.29)
+      expect(share).toBeGreaterThan(0.17)
+      expect(share).toBeLessThan(0.23)
     }
   }
 })

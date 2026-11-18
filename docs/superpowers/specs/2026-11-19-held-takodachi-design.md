@@ -9,8 +9,8 @@ fun and variety, like the marks that get shuffled across the sky.
 
 ## Goals
 
-- Each tentacle is rolled on its own when the theme loads: about 1 in 4 it wraps a
-  takodachi (look B), about 1 in 4 it carries one (look C), otherwise it's left as
+- Each tentacle is rolled on its own when the theme loads: about 1 in 5 it wraps a
+  takodachi (look B), about 1 in 5 it carries one (look C), otherwise it's left as
   it is today. So both, one or neither can hold a takodachi, and the two can use
   different looks.
 - **B: wrapped.** The tentacle keeps its curve, then its tip loops round a

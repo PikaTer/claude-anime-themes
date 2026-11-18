@@ -3,12 +3,12 @@
 
 import { curls, px, pxr, tentacle } from './pixels.js'
 
-/** What each tentacle holds, rolled on its own: a quarter wrap, a quarter ride. */
+/** What each tentacle holds, rolled on its own: one in five wrap, one in five ride. */
 export function rollHold(random = Math.random) {
   const grip = () => {
     const roll = random()
 
-    return roll < 0.25 ? 'wrap' : roll < 0.5 ? 'ride' : 'none'
+    return roll < 0.2 ? 'wrap' : roll < 0.4 ? 'ride' : 'none'
   }
   const high = grip()
 
