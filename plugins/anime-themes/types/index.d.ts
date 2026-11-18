@@ -10,6 +10,8 @@ export type Tako = {
   /** How it arrives and how it goes. */
   enter: 'circle' | 'tentacle' | 'pop' | 'fall' | 'ink'
   exit: 'circle' | 'tentacle' | 'ascend' | 'ink' | 'sink'
+  /** Fern's staff: it joined while Frieren Ina was out. */
+  staff: boolean
   /** `in` and `out` play once, as the scene is next drawn. */
   phase: 'in' | 'on' | 'out'
 }
@@ -24,6 +26,10 @@ export type Scene = {
   cue: 'none' | 'join' | 'leave' | 'wait' | 'back' | Ending
   /** Changes with every change of scene: which of her lines come up. */
   seed: number
+  /** Who is out: nerd Ina, or Frieren Ina, summoned on one wake in four. */
+  form: 'nerd' | 'frieren'
+  /** Frieren Ina's face this turn; `plain` for nerd Ina. */
+  face: 'plain' | 'smug' | 'cute'
   takos: Tako[]
 }
 

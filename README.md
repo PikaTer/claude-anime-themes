@@ -4,7 +4,7 @@ A Claude Code plugin marketplace of anime-inspired themes. One plugin, `anime-th
 
 | Theme | What it is |
 | --- | --- |
-| `ina-pixel-dark` | Purple on black, with a pixel Ina who naps while idle, works in nerd glasses, and a takodachi for every subagent |
+| `ina-pixel-dark` | Purple on black, with a pixel Ina who naps while idle, works in nerd glasses, and a takodachi for every subagent. On one turn in four a summoning circle brings Frieren Ina instead, and her takodachis carry Fern's staff |
 
 ## Requirements
 

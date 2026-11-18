@@ -23,3 +23,5 @@ export function resume(scene: Scene, id: string): Scene
 export function join(scene: Scene, id: string): Scene
 /** A subagent's run ends. */
 export function leave(scene: Scene, id: string): Scene
+/** Characters of Ina's lines the pixel font cannot draw: empty when every line can be drawn. */
+export function missingGlyphs(): string[]

@@ -1,7 +1,7 @@
 import { expect, mock, test } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 
-import { ASLEEP, doze, draw, join, leave, wake } from './themes/ina-pixel-dark/scene.js'
+import { ASLEEP, ask, doze, draw, join, leave, missingGlyphs, resume, wake } from './themes/ina-pixel-dark/scene.js'
 
 const BACKDROP = {
   plugin: 'anime-themes',
@@ -143,6 +143,66 @@ test('takodachis keep to the left, apart, and the scene fits its limit', () => {
   const going = ids.reduce(leave, busy)
   expect(draw({ ...going, takos: [...busy.takos.map(tako => ({ ...tako, phase: 'in' as const })), ...going.takos] }).length).toBeLessThan(131072)
   expect(doze(going, 't', 'done').takos).toEqual([])
+  // Frieren Ina leaving, her staffed takodachis all coming and going too.
+  const staffed = ids.reduce(join, wake(ASLEEP, FRIEREN))
+  const parting = doze(ids.reduce(leave, staffed), 'd', 'ask')
+  expect(
+    draw({ ...parting, takos: [...staffed.takos.map(tako => ({ ...tako, phase: 'in' as const })), ...parting.takos] }).length,
+  ).toBeLessThan(131072)
+})
+
+// Turn ids, and the first of them that summons Frieren Ina.
+const TURNS = Array.from({ length: 400 }, (_, i) => `turn-${i}`)
+const FRIEREN = TURNS.find(id => wake(ASLEEP, id).form === 'frieren') ?? 'none'
+
+test('Frieren Ina comes up on about one wake in four, with every face', () => {
+  const summoned = TURNS.map(id => wake(ASLEEP, id)).filter(scene => scene.form === 'frieren')
+
+  expect(summoned.length).toBeGreaterThan(60)
+  expect(summoned.length).toBeLessThan(140)
+  expect(new Set(summoned.map(scene => scene.face)).size).toBe(3)
+  // The other tests' turns stay nerd Ina's.
+  expect(wake(ASLEEP, 't').form).toBe('nerd')
+  expect(wake(ASLEEP, 't1').form).toBe('nerd')
+})
+
+test("Frieren's turn keeps her through questions, and the next change after she dozes is regular Ina", () => {
+  const fr = wake(ASLEEP, FRIEREN)
+  const asked = resume(ask(fr, 'q'), 'q')
+
+  expect(asked.form).toBe('frieren')
+  expect(asked.face).toBe(fr.face)
+  expect(wake(fr, 'again')).toMatchObject({ form: 'frieren', face: fr.face })
+  const after = join(doze(fr, 'd', 'done'), 'a')
+  expect(after.form).toBe('nerd')
+  expect(after.takos[0]?.staff).toBe(false)
+})
+
+test("takodachis that join Frieren Ina carry Fern's staff", () => {
+  expect(join(wake(ASLEEP, FRIEREN), 'a').takos[0]?.staff).toBe(true)
+  for (const id of TURNS.slice(0, 40)) {
+    const scene = wake(ASLEEP, id)
+    expect(join(scene, 'a').takos[0]?.staff).toBe(scene.form === 'frieren')
+  }
+})
+
+test('every line Ina says has a glyph for every character', () => {
+  expect(missingGlyphs()).toEqual([])
+})
+
+test("the scene draws Frieren Ina's summon-in and summon-out", () => {
+  const fr = wake(ASLEEP, FRIEREN)
+  const nerd = wake(ASLEEP, 't')
+
+  expect(draw(fr)).toContain('class="fh"')
+  expect(draw(fr)).toContain('class="fx"')
+  expect(draw(fr)).not.toContain('class="glasses"')
+  expect(draw(doze(fr, 'd', 'done'))).toContain('class="cover"')
+  for (const svg of [draw(nerd), draw(doze(nerd, 'd', 'done'))]) {
+    expect(svg).not.toContain('class="fh"')
+    expect(svg).not.toContain('class="fx"')
+    expect(svg).not.toContain('class="cover"')
+  }
 })
 
 test('the scene is left to the app in the terminal', async ($, on) => {

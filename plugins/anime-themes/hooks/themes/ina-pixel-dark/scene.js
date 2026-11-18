@@ -1,61 +1,7 @@
 // The pixel art, the scene's SVG and the scene's state changes. Pure: no `$`.
-// Sprites are text grids, one character a pixel, so they can be redrawn by hand.
 
-const PAL = {
-  o: '#1b1430', // outline
-  h: '#5d4b8a', // hair
-  H: '#8a76bd', // hair light
-  d: '#463769', // hair dark
-  s: '#ffeadf', // skin
-  b: '#f9a9b0', // blush
-  y: '#f6a440', // orange
-  Y: '#ffd27f', // orange light
-  w: '#ffffff',
-  e: '#2b2045', // eyes, ink
-  p: '#e8789a', // mouth
-  t: '#7a67a8', // takodachi
-  T: '#a08fca', // takodachi light
-  g: '#8d93ab', // laptop
-  G: '#c6cbdd', // laptop light
-  k: '#c98a45', // cookie
-  K: '#6e4525', // chocolate chip
-  z: '#b9a6ee', // zzz, Ina's marks
-  m: '#2a1f4e', // sigil
-  M: '#43317a', // sigil light
-  q: '#a8662a', // sigil and sucker orange
-  u: '#271c4b', // tentacle
-  U: '#3f2f78', // tentacle light
-  x: '#2b2045', // text
-}
-
-/** Rows of pixels to one `<path>` per color, each run of a row one rectangle. */
-function px(rows, ox = 0, oy = 0) {
-  const paths = {}
-
-  rows.forEach((row, y) => {
-    for (let x = 0; x < row.length; ) {
-      const color = row[x]
-      let run = 1
-
-      while (row[x + run] === color) {
-        run++
-      }
-      if (color !== '.') {
-        paths[color] = `${paths[color] ?? ''}M${x + ox} ${y + oy}h${run}v1h-${run}z`
-      }
-      x += run
-    }
-  })
-
-  return Object.entries(paths)
-    .map(([color, d]) => `<path fill="${PAL[color]}" d="${d}"/>`)
-    .join('')
-}
-
-const mirror = rows => rows.map(row => row + [...row].reverse().join(''))
-/** One sprite at `x`, and its mirror image on the other side of a `width` wide sprite. */
-const both = (rows, x, y, width) =>
-  px(rows, x, y) + px(rows.map(row => [...row].reverse().join('')), width - x - rows[0].length, y)
+import { both, curls, grid, line, mirror, plot, px, round, rows, tentacle } from './pixels.js'
+import { COVER, FAREWELL, FR_SAY, FR_WAKE, GLINT, KANA, STAFF, frierenBack, frierenFront, summonFx } from './frieren.js'
 
 // Ina's head, left half: 42 x 32 once mirrored.
 const HEAD = mirror([
@@ -148,20 +94,28 @@ const FONT = Object.fromEntries(
     '-': '../../xx/../..',
     '~': '...../.x.../x.x.x/...x./.....',
     ' ': '../../../../..',
+    0: 'xxx/x.x/x.x/x.x/xxx',
+    1: '.x./xx./.x./.x./xxx',
+    2: 'xx./..x/.x./x../xxx',
+    3: 'xx./..x/.x./..x/xx.',
+    4: 'x.x/x.x/xxx/..x/..x',
+    5: 'xxx/x../xx./..x/xx.',
+    6: '.xx/x../xx./x.x/.x.',
+    7: 'xxx/..x/.x./.x./.x.',
+    8: '.x./x.x/.x./x.x/.x.',
+    9: '.x./x.x/.xx/..x/xx.',
+    ...KANA,
   }).map(([char, glyph]) => [char, glyph.split('/')]),
 )
 
-/** One line of text as five rows of pixels. */
+/** One line of text as rows of pixels: five, or seven where it has kana, letters set on the line's foot. */
 function letters(text) {
-  const out = ['', '', '', '', '']
+  const glyphs = [...text].map(char => FONT[char] ?? FONT[' '])
+  const height = Math.max(...glyphs.map(glyph => glyph.length))
 
-  for (const char of text) {
-    ;(FONT[char] ?? FONT[' ']).forEach((row, y) => {
-      out[y] += (out[y] === '' ? '' : '.') + row
-    })
-  }
-
-  return out
+  return Array.from({ length: height }, (_, y) =>
+    glyphs.map(glyph => glyph[y - height + glyph.length] ?? '.'.repeat(glyph[0].length)).join('.'),
+  )
 }
 
 /** A speech bubble's rows for one or more lines, its tail `fromRight` of its right edge. */
@@ -208,59 +162,54 @@ const SAY = {
 
 const LOOP = 24
 
-/** What Ina says in a scene: `once` at a moment, on a `loop`, or to `stay`. */
-function lines({ ina, cue, seed }) {
+/** Two different lines of a pool, picked by `seed`. */
+function two(pool, seed) {
+  const a = seed % pool.length
+  const b = (a + 1 + ((seed >>> 8) % (pool.length - 1))) % pool.length
+
+  return [pool[a], pool[b]]
+}
+
+/**
+ * What Ina says in a scene: `once` at a moment (for `dur` seconds), on a
+ * `loop`, or to `stay` (from `at`, when that is later than the start).
+ */
+function lines({ ina, cue, seed, form }) {
   const pick = pool => pool[seed % pool.length]
   const once = (pool, at) => ({ text: pick(pool), at, kind: 'once' })
-  const stay = pool => ({ text: pick(pool), at: 0.1, kind: 'stay' })
+  const stay = (pool, at = 0.1) => ({ text: pick(pool), at, kind: 'stay' })
+  const frieren = form === 'frieren'
 
   if (ina === 'wait') {
     return [stay(SAY.wait)]
   }
+  // Frieren Ina's farewell, whatever the ending; a question waits for regular Ina.
+  if (ina === 'doze' && frieren) {
+    return [{ text: FAREWELL, at: 0.1, kind: 'once' }, ...(cue === 'ask' ? [stay(SAY.ask, 4.6)] : [])]
+  }
   if (ina === 'sleep' || ina === 'doze') {
     return cue === 'ask' ? [stay(SAY.ask)] : ina === 'doze' ? [once(SAY[cue] ?? SAY.done, 0.1)] : []
   }
-  const first = ina === 'wake' ? [once(SAY.wake, 0.6)] : SAY[cue] ? [once(SAY[cue], 0.2)] : []
-  const a = seed % SAY.work.length
-  const b = (a + 1 + ((seed >>> 8) % (SAY.work.length - 1))) % SAY.work.length
+  const woken = frieren ? [{ text: FR_WAKE, at: 0.4, kind: 'once', dur: 1 }] : [once(SAY.wake, 0.6)]
+  const first = ina === 'wake' ? woken : SAY[cue] ? [once(SAY[cue], 0.2)] : []
+  const usual = two(SAY.work, seed)
+  // Hers come up two times in three.
+  const own = two(FR_SAY, seed >>> 12)
+  const said = frieren ? usual.map((line, i) => ((seed >>> (20 + 4 * i)) % 3 < 2 ? own[i] : line)) : usual
 
   return [
     ...first,
     { text: 'WAH!', at: 4, kind: 'loop' },
-    { text: SAY.work[a], at: 12, kind: 'loop' },
-    { text: SAY.work[b], at: 20, kind: 'loop' },
+    { text: said[0], at: 12, kind: 'loop' },
+    { text: said[1], at: 20, kind: 'loop' },
   ]
 }
 
-// The background's larger shapes are plotted, not typed: too big for a grid by hand.
-const grid = (width, height) => Array.from({ length: height }, () => Array(width).fill('.'))
-const rows = cells => cells.map(row => row.join(''))
+/** Characters of Ina's lines the pixel font cannot draw: empty when every line can be drawn. */
+export function missingGlyphs() {
+  const all = [...Object.values(SAY).flat(), ...FR_SAY, FR_WAKE, FAREWELL, 'WAH!']
 
-function plot(cells, x, y, color) {
-  const row = cells[Math.round(y)]
-
-  if (row !== undefined && Math.round(x) >= 0 && Math.round(x) < row.length) {
-    row[Math.round(x)] = color
-  }
-}
-
-function line(cells, [x0, y0], [x1, y1], color) {
-  const steps = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0))
-
-  for (let i = 0; i <= steps; i++) {
-    plot(cells, x0 + ((x1 - x0) * i) / steps, y0 + ((y1 - y0) * i) / steps, color)
-  }
-}
-
-/** Every pixel `test` accepts by its distance from a centre. */
-function round(cells, cx, cy, reach, color, test) {
-  for (let y = Math.floor(cy - reach); y <= cy + reach; y++) {
-    for (let x = Math.floor(cx - reach); x <= cx + reach; x++) {
-      if (test(Math.hypot(x - cx, y - cy))) {
-        plot(cells, x, y, color)
-      }
-    }
-  }
+  return [...new Set(all.join('').replaceAll('\n', ''))].filter(char => FONT[char] === undefined)
 }
 
 // A summoning circle behind Ina's head: rings, rune ticks, a triangle.
@@ -288,46 +237,6 @@ const SIGIL = (() => {
   return px(rows(cells), 21 - c, 16 - c)
 })()
 
-/**
- * A tentacle rising from the foot of its grid and turning left by `bend`, a
- * function of how far along it is (0 to 1): its rows and the column of its root.
- */
-function tentacle(length, bend, thick = 4.2, [body, light, sucker] = 'uUq') {
-  const spine = []
-  let x = 0
-  let y = 0
-
-  for (let i = 0; i < length; i++) {
-    const t = i / length
-    const heading = -Math.PI / 2 - bend(t)
-
-    spine.push({ x, y, heading, thick: (thick - 1) * (1 - t) + 1 })
-    x += Math.cos(heading)
-    y += Math.sin(heading)
-  }
-  const left = Math.floor(Math.min(...spine.map(at => at.x - at.thick)))
-  const top = Math.floor(Math.min(...spine.map(at => at.y - at.thick)))
-  const cells = grid(Math.ceil(Math.max(...spine.map(at => at.x + at.thick))) - left + 1, 1 - top)
-
-  spine.forEach(at => {
-    at.x -= left
-    at.y -= top
-  })
-  spine.forEach(at => round(cells, at.x, at.y, at.thick, body, far => far < at.thick))
-  spine.forEach((at, i) => {
-    const side = (reach, turn) => [at.x + reach * Math.cos(at.heading + turn), at.y + reach * Math.sin(at.heading + turn)]
-
-    plot(cells, ...side(at.thick - 1.6, Math.PI / 2), light)
-    if (i % 6 === 2 && at.thick > 2) {
-      plot(cells, ...side(at.thick - 1.6, -Math.PI / 2), sucker)
-    }
-  })
-
-  return { rows: rows(cells), root: -left }
-}
-
-// A sway, then a curl that tightens to the tip.
-const curls = (sway, curl) => t => sway * Math.sin(t * 5) + curl * t ** 3
 const low = tentacle(110, curls(0.4, 7))
 const high = tentacle(70, curls(0.35, 8))
 const TENTACLE_LOW = px(low.rows, -low.root - 7, -low.rows.length)
@@ -435,9 +344,13 @@ const GLASSES = `<g class="glasses">${BRIDGE}<g class="sa">${lenses(SWIRL_A)}</g
 const plays = (slot, delay, loop, once) =>
   slot.kind === 'loop' ? `animation:${loop} ${LOOP}s steps(1) ${delay}s infinite` : slot.kind === 'once' ? `animation:${once} ${delay}s` : ''
 
+/** A line that stays: up at once, or hidden until its moment. */
+const stays = slot => (slot.at > 1 ? `opacity:1;animation:off ${slot.at}s` : 'opacity:1')
+
 function ina(scene, said) {
+  const frieren = scene.form === 'frieren'
   const bubbles = said
-    .map(slot => `<g class="say" style="${plays(slot, slot.at, 'say', 'on 2.4s') || 'opacity:1'}">${speech(slot.text)}</g>`)
+    .map(slot => `<g class="say" style="${plays(slot, slot.at, 'say', `on ${slot.dur ?? 2.4}s`) || stays(slot)}">${speech(slot.text)}</g>`)
     .join('')
   // Her mouth moves with each line; a standing line is spoken once, as she dozes.
   const mouths = said
@@ -445,9 +358,17 @@ function ina(scene, said) {
     .map(style => (style === '' ? '' : `<g class="mo" style="${style}">${MOUTH_OPEN}</g>`))
     .join('')
 
+  // Frieren Ina's turn: her head, and regular Ina's, without glasses, for either
+  // side of the summoning. The light and the tentacles only as she comes and goes.
+  const summoning =
+    frieren && scene.ina === 'wake' ? summonFx(0, true) : frieren && scene.ina === 'doze' ? summonFx(2.4, false) : ''
+  const heads = frieren
+    ? `<g class="nh">${HEAD_ART}</g><g class="fh">${frierenBack()}${AHOGE}${px(HEAD)}${frierenFront(scene.face)}</g>`
+    : `<g class="nh">${HEAD_ART}${GLASSES}</g>`
+
   return (
-    `<g class="sigil">${SIGIL}</g><g class="zzz">${ZZZ}</g>${bubbles}` +
-    `<g class="head">${HEAD_ART}${mouths}${GLASSES}</g>`
+    `<g class="sigil">${SIGIL}</g>${summoning}<g class="zzz">${ZZZ}</g>${bubbles}` +
+    `<g class="head">${heads}${mouths}</g>${frieren && scene.ina === 'doze' ? COVER : ''}`
   )
 }
 
@@ -553,7 +474,7 @@ const WAH_ECHO = (() => {
 })()
 
 const DEFS =
-  `<g id="tako">${TAKO}</g><g id="ring">${RING}</g><g id="grab">${GRAB}</g><g id="wah">${WAH_ECHO}</g>${MARK_DEFS}`
+  `<g id="staff">${STAFF}</g><g id="tako">${TAKO}</g><g id="ring">${RING}</g><g id="grab">${GRAB}</g><g id="wah">${WAH_ECHO}</g>${MARK_DEFS}`
 
 const ENTER = ['circle', 'tentacle', 'pop', 'fall', 'ink']
 const EXIT = ['circle', 'tentacle', 'ascend', 'ink', 'sink']
@@ -577,7 +498,9 @@ function takodachi(tako, wahs) {
   const echoes = tako.phase === 'out' ? [] : wahs
   const body = echoes.reduce(
     (inner, slot) => `<g style="${plays(slot, (slot.at + beat).toFixed(2), 'hop24', 'hop .3s steps(3)')}">${inner}</g>`,
-    `<g class="bob" style="animation-delay:-${((tako.cell * 0.37) % 1.4).toFixed(2)}s"><use href="#tako"/>${tako.kind === 'cookie' ? COOKIE : LAPTOP}</g>`,
+    `<g class="bob" style="animation-delay:-${((tako.cell * 0.37) % 1.4).toFixed(2)}s">` +
+      (tako.staff ? `<use href="#staff"/><g class="glint" style="animation-delay:-${(beat * 4).toFixed(2)}s">${GLINT}</g>` : '') +
+      `<use href="#tako"/>${tako.kind === 'cookie' ? COOKIE : LAPTOP}</g>`,
   )
 
   return (
@@ -637,6 +560,26 @@ const CSS = `
 .p-ring{animation:ring 1.3s steps(1)}
 .i1{animation:on .15s,on .15s .45s}
 .i2{animation:on .3s .15s}
+.fh,.fx .pt,.fx .beam,.fx .sp,.fx .fl,.glint{opacity:0}
+.f.work .fh,.f.wait .fh{opacity:1}
+.f.work .nh,.f.wait .nh{opacity:0}
+.f.wake .nh{opacity:0;animation:on 1.3s}
+.f.wake .fh{opacity:1;animation:off 1.3s}
+.f.doze .fh{animation:on 3.6s}
+.f.doze .nh{animation:off 3.6s}
+.f.wake .sigil{animation:glow .4s steps(4) backwards,pulse 4s steps(4) 2s infinite}
+.fx .fl{animation:flare 1.8s steps(6) var(--s)}
+.fx .pt{animation:rise 1s steps(5) calc(var(--s) + var(--k)) 2}
+.fx .beam{transform-box:fill-box;transform-origin:center;animation:beam .9s steps(6) calc(var(--s) + .9s)}
+.fx .sp{animation:twinkle .9s steps(3) calc(var(--s) + 1s)}
+.cover{transform:translateY(100px);animation:cover 1.4s steps(7) 3s}
+.glint{animation:glint 2.8s steps(1) infinite}
+@keyframes flare{0%{opacity:.3}60%{opacity:1}to{opacity:0}}
+@keyframes rise{from{opacity:1}to{transform:translateY(-16px);opacity:0}}
+@keyframes beam{0%{opacity:.2;transform:scaleX(.15)}45%{opacity:1;transform:none}to{opacity:0;transform:scaleX(.6)}}
+@keyframes twinkle{0%,to{opacity:0}50%{opacity:1}}
+@keyframes cover{0%{transform:translateY(100px)}35%,65%{transform:none}to{transform:translateY(100px)}}
+@keyframes glint{0%,10%{opacity:1}11%,to{opacity:0}}
 @keyframes on{from,to{opacity:1}}
 @keyframes off{from,to{opacity:0}}
 @keyframes mid{0%,49%{opacity:0}50%,to{opacity:1}}
@@ -673,7 +616,9 @@ export function draw(scene, { left = 0, right = 0 } = {}) {
   const said = lines(scene)
   const wahs = said.filter(slot => slot.kind !== 'stay' && slot.text.includes('WAH'))
   // She finishes her line before she dozes off.
-  const lull = scene.cue === 'ask' ? 3 : 2.4
+  // Frieren Ina is sent back first, and regular Ina has a moment awake.
+  const lull = scene.form === 'frieren' ? 5 : scene.cue === 'ask' ? 3 : 2.4
+  const state = `${scene.ina}${scene.form === 'frieren' ? ' f' : ''}`
 
   // No viewBox on the root: one unit is one CSS pixel, so the sprites keep whole
   // pixels at any window size, pinned to the edges by the nested svgs. The
@@ -688,12 +633,12 @@ export function draw(scene, { left = 0, right = 0 } = {}) {
     `<svg x="100%" y="100%" overflow="visible"><g transform="translate(${-right} 0)"><g class="ina-s">${TENTACLE_LOW}</g></g></svg>` +
     // The takodachis' own left edge: what reaches past it is cut, so a tentacle comes out from behind it.
     `<svg x="${left}">${scene.takos.map(tako => takodachi(tako, wahs)).join('')}</svg>` +
-    `<svg x="100%" y="50%" overflow="visible"><g transform="translate(${-right} 0)"><g class="ina-s"><g transform="translate(-48 -16)" class="${scene.ina}" style="--d:${lull}s">${ina(scene, said)}</g></g></g></svg>` +
+    `<svg x="100%" y="50%" overflow="visible"><g transform="translate(${-right} 0)"><g class="ina-s"><g transform="translate(-52 -16)" class="${state}" style="--d:${lull}s">${ina(scene, said)}</g></g></g></svg>` +
     `</svg>`
   )
 }
 
-export const ASLEEP = { ina: 'sleep', cue: 'none', seed: 0, takos: [] }
+export const ASLEEP = { ina: 'sleep', cue: 'none', seed: 0, form: 'nerd', face: 'plain', takos: [] }
 
 const working = scene => scene.ina === 'wake' || scene.ina === 'work'
 const asleep = scene => scene.ina === 'sleep' || scene.ina === 'doze'
@@ -705,11 +650,27 @@ const settle = (scene, id) => ({
   ina: scene.ina === 'wake' ? 'work' : scene.ina === 'doze' ? 'sleep' : scene.ina,
   cue: (scene.cue === 'ask' && asleep(scene)) || (scene.cue === 'wait' && scene.ina === 'wait') ? scene.cue : 'none',
   seed: hash(`${scene.seed}${id}`),
+  // Frieren Ina leaves as she dozes: what wakes next is regular Ina, or a new roll.
+  form: scene.ina === 'doze' ? 'nerd' : scene.form,
+  face: scene.ina === 'doze' ? 'plain' : scene.face,
   takos: scene.takos.filter(tako => tako.phase !== 'out').map(tako => ({ ...tako, phase: 'on' })),
 })
 
-/** The main agent starts a turn. */
-export const wake = (scene, id) => ({ ...settle(scene, id), ina: asleep(scene) ? 'wake' : 'work', cue: 'none' })
+const FACES = ['plain', 'smug', 'cute']
+
+/** The main agent starts a turn. From sleep, one wake in four summons Frieren Ina. */
+export function wake(scene, id) {
+  const next = { ...settle(scene, id), cue: 'none' }
+
+  if (!asleep(scene)) {
+    return { ...next, ina: 'work' }
+  }
+  const roll = hash(`frieren:${id}`)
+
+  return roll % 4 === 0
+    ? { ...next, ina: 'wake', form: 'frieren', face: FACES[(roll >>> 8) % FACES.length] }
+    : { ...next, ina: 'wake', form: 'nerd', face: 'plain' }
+}
 
 /** The main agent's turn ends: `cue` is `done`, `ask`, `stop` or `oops`. */
 export const doze = (scene, id, cue = 'done') =>
@@ -747,6 +708,8 @@ export function join(scene, id) {
     kind: (code >>> 12) % 3 === 0 ? 'cookie' : 'laptop',
     enter: ENTER[(code >>> 16) % ENTER.length],
     exit: EXIT[(code >>> 20) % EXIT.length],
+    // Fern's staff, for any that come while Frieren Ina is out.
+    staff: next.form === 'frieren',
     phase: 'in',
   }
 
