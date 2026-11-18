@@ -4,7 +4,7 @@ import { both, curls, grid, line, mirror, plot, px, round, rows, tentacle } from
 import { COVER, FAREWELL, FR_SAY, FR_WAKE, GLINT, KANA, STAFF, frierenBack, frierenFront, summonFx } from './frieren.js'
 import { AO_BYE, AO_CSS, AO_DEFS, AO_GET, AO_HI, AO_SAY, AO_SPARKS, aoChan } from './ao.js'
 import { FIRE, SHOW, SHOW_SAY, showParts, takoShow } from './special.js'
-import { CAT_AO, CAT_BYE, CAT_CSS, CAT_HEAD, CAT_SAY, CAT_SPARKS, CAT_WAKE, HEART, nyan } from './cat.js'
+import { CAT_AO, CAT_BYE, CAT_CSS, CAT_HEAD, CAT_SAY, CAT_SPARKS, CAT_WAKE, HEART, TAKO_EARS, nyan } from './cat.js'
 
 // Ina's head, left half: 42 x 32 once mirrored, down to where her hair hangs
 // free of her cheeks. Its ends are one of HAIR's.
@@ -575,7 +575,7 @@ function takodachi(tako, wahs, show, cat) {
     (inner, slot) => `<g style="${plays(slot, (slot.at + beat).toFixed(2), 'hop24', 'hop .3s steps(3)')}">${inner}</g>`,
     `<g class="bob" style="animation-delay:-${((tako.cell * 0.37) % 1.4).toFixed(2)}s">` +
       (tako.staff ? `<use href="#staff"/><g class="glint" style="animation-delay:-${(beat * 4).toFixed(2)}s">${GLINT}</g>` : '') +
-      `<use href="#tako"/>${tako.kind === 'cookie' ? COOKIE : LAPTOP}${part?.on ?? ''}</g>`,
+      `<use href="#tako"/>${tako.ears ? '<use href="#cear"/>' : ''}${tako.kind === 'cookie' ? COOKIE : LAPTOP}${part?.on ?? ''}</g>`,
   )
 
   return (
@@ -737,7 +737,7 @@ export function draw(scene, { left = 0, right = 0 } = {}) {
   // style fills the view where a surface puts the markup in a page of its own.
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" style="position:fixed;top:0;left:0;width:100vw;height:100vh${show === null ? '' : `;--x:${show.x.toFixed(2)}s`}" shape-rendering="crispEdges"><style>${CSS}${scene.form === 'cat' ? CAT_CSS : ''}${parts?.css ?? ''}</style>` +
-    `<defs><radialGradient id="glow"><stop offset="0" stop-color="#3a2670" stop-opacity=".5"/><stop offset="1" stop-color="#3a2670" stop-opacity="0"/></radialGradient>${DEFS}${scene.form === 'cat' ? NYAH_ECHO : ''}${parts?.defs ?? ''}</defs>` +
+    `<defs><radialGradient id="glow"><stop offset="0" stop-color="#3a2670" stop-opacity=".5"/><stop offset="1" stop-color="#3a2670" stop-opacity="0"/></radialGradient>${DEFS}${scene.form === 'cat' ? NYAH_ECHO : ''}${scene.takos.some(tako => tako.ears) ? TAKO_EARS : ''}${parts?.defs ?? ''}</defs>` +
     `<rect width="100%" height="100%" fill="#07050c"/>` +
     `<svg x="100%" y="50%" overflow="visible"><circle cx="${-right - 135}" r="1000" fill="url(#glow)"/></svg>` +
     `<g class="${scene.ina}">${STARS}</g>${parts?.under ?? ''}` +

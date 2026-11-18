@@ -251,6 +251,22 @@ test("the scene draws cat Ina's transformation, and none of it for anyone else",
   }
 })
 
+test('cat ears for her takodachis and for Ao-chan, who also gets a tail', () => {
+  const cat = join(wake(ASLEEP, CAT_AO), 'a')
+
+  expect(draw(cat)).toContain('href="#cear"')
+  expect(draw(cat)).toContain('id="cear"')
+  expect(draw(cat)).toContain('class="ac"')
+  expect(draw(join(wake(ASLEEP, AO), 'a'))).not.toContain('class="ac"')
+  expect(draw(join(wake(ASLEEP, 't'), 'a'))).not.toContain('id="cear"')
+  // An eared takodachi outlives her turn into Frieren's: still eared, still drawn.
+  const next = wake(doze(cat, 'd', 'done'), FRIEREN)
+  expect(next.form).toBe('frieren')
+  expect(next.takos[0]?.ears).toBe(true)
+  expect(draw(next)).toContain('id="cear"')
+  expect(draw(next)).toContain('href="#cear"')
+})
+
 test('cat Ina keeps her heart circle inside its budget', () => {
   const svg = draw({ ...wake(ASLEEP, CAT), ina: 'work' })
   const at = svg.indexOf('class="heart"')

@@ -1,7 +1,7 @@
 // Cat Ina: Ninyomanyo Ninya'nis, Ina with cat ears, on about one wake in five.
 // Her lines and how she nyanifies everyone else's, her look, and her CSS.
 
-import { grid, line, plot, px, round, rows } from './pixels.js'
+import { both, grid, line, plot, px, round, rows } from './pixels.js'
 
 /** What she blurts as she wakes, greets Ao-chan with, and says as she goes. */
 export const CAT_WAKE = 'INYA?!?'
@@ -101,6 +101,21 @@ export const HEART = (() => {
   return px(rows(cells), cx - pad, cy - pad)
 })()
 
+// Cat ears for a takodachi that joins her, on its head beside its halo, in
+// its own 24 x 20 grid.
+const TAKO_EAR = ['.o...', '.oo..', '.oIo.', 'otIto']
+export const TAKO_EARS = `<g id="cear">${both(TAKO_EAR, 5, 1, 24)}</g>`
+
+// Ao-chan's cat ears on her top edge, and a tail curling up from her top-right
+// corner, away from the conversation, in two frames to sway. `at` is the book's
+// top-left corner, as `ao.js` places her.
+const AO_EAR = ['o.....', 'oo....', 'oIo...', 'oIIoo.', 'oIIiio', 'oiiiii']
+const TAIL_A = ['.ooo..', 'oiiio.', 'oiooio', 'oio.o.', 'oio...', '.oio..', '..oio.', '..oio.', '.oio..', '.oio..', '..oio.', '..oio.']
+const TAIL_B = ['..ooo.', '.oiiio', '.oiooo', '.oio..', '..oio.', '..oio.', '..oio.', '..oio.', '.oio..', '.oio..', '..oio.', '..oio.']
+export const aoCat = ([x, y]) =>
+  `<g class="ac">${px(AO_EAR, x + 1, y - 5)}${px(flip(AO_EAR), x + 11, y - 5)}` +
+  `<g class="at1">${px(TAIL_A, x + 15, y - 9)}</g><g class="at2">${px(TAIL_B, x + 15, y - 9)}</g></g>`
+
 // Her CSS, drawn only while she is out. At rest she is simply there: ears up,
 // whiskers on, the heart behind her. Waking, she is surprised, sparkles
 // twinkle, an ear pops up, then the other, and the circle turns into the
@@ -122,6 +137,9 @@ export const CAT_CSS = `
 .c.doze .heart{animation:cout .8s steps(4) calc(var(--h) + 2s) forwards}
 .c.doze .sigil{animation:cin .8s steps(4) calc(var(--h) + 2s) backwards,dim .6s steps(4) var(--d) backwards}
 .c.doze .cf{opacity:0;animation:on calc(var(--h) + 2.8s)}
+.at2{opacity:0}
+.c.wake .at1,.c.work .at1{animation:flip 1.6s steps(1) infinite}
+.c.wake .at2,.c.work .at2{animation:flip 1.6s steps(1) -.8s infinite}
 @keyframes cin{from{opacity:0}}
 @keyframes cout{from{opacity:1}to{opacity:0}}
 @keyframes cup{from{transform:translateY(4px);opacity:0}}
