@@ -225,8 +225,10 @@ test('Ao-chan glows in, blinks from the start, and keeps her sparkles off the bu
   expect(css).toMatch(/\.wake \.agl\{animation/)
   // The flutter lives in a <use>d copy: styled on its own.
   expect(css).toMatch(/(^|\})\.af\{animation/)
-  // The head bobs from 1.2 s whoever is out; the hops go over it.
-  expect(css).toMatch(/\.a\.wake \.head\{animation:bob 1s steps\(1\) 1\.2s infinite,hop/)
+  // The head bobs from 1.2 s; nerd Ina hops once more for her, over it. One
+  // hop, and none for Frieren Ina, whose summoning is busy enough: more trips
+  // the desktop app's flash guard, which holds the scene still.
+  expect(css).toMatch(/\.a\.wake:not\(\.f\) \.head\{animation:bob 1s steps\(1\) 1\.2s infinite,hop \.3s steps\(3\) calc\(var\(--a\) \+ \.4s\)\}/)
   expect(svg.indexOf('class="asp"')).toBeLessThan(svg.indexOf(speechMarkup('AO-CHAN!!')))
   // Her glow stays about her own width.
   expect(svg).toMatch(/class="ag"[^>]*rx="10"/)

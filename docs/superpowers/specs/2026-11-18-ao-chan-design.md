@@ -100,7 +100,9 @@ Frames:
 - Nerd Ina: Ao-chan is what wakes her. At 0.1 s the lower-left mark of the circle
   glows; at 0.2–0.8 s the book rises out of it, closed, with a few motes, bounces
   once and her eye opens. At 0.6 s Ina's wake line is **"AO-CHAN!!"** instead of her
-  usual one, and she does a double hop with a few sparkles popping round her head.
+  usual one, and she hops once with a few sparkles popping round her head. (Not a
+  double hop: her head is big enough that hops this close together trip the
+  desktop app's flash guard, which holds the backdrop still.)
 - Frieren Ina: the summoning plays as now (0–1.8 s). At 1.9 s Ao-chan rises the same
   way, and at 2.0 s Frieren says **"AO-CHAN GET!"** for 1.8 s with the sparkles, so the
   bubble is gone before the looping "WAH!" at 4 s. Her usual "WAH?!?" at 0.4 s stays.

@@ -8,8 +8,8 @@ show over her head, and every takodachi on screen reacts. Three shows:
 | Show | When | Ina | Takodachis |
 | --- | --- | --- | --- |
 | Gold trophy | nerd Ina | A gold trophy rises over her head with turning rays, sparkles and falling confetti. A gold flash. "ANOTHER GOLD TROPHY FOR NINOMAE INA'NIS!" over four lines | Sunglasses drop onto their faces and glint |
-| World domINAtion | nerd Ina with Ao-chan | The window darkens. Ao-chan flies up from her mark over Ina's head and throws herself open in a dark aura, her eye glowing red. Ina's lenses glare red and her head shakes. "WORLD DOMINATION", with INA in Ao-chan's pink | Wide-eyed, sweating and shaking under a flashing "!!", then they bow again and again with arms raised |
-| Zoltraak | Frieren Ina | A magic circle opens over her head, lightning strikes it twice with flashes, it charges and fires a beam across the whole window at the takodachis. With none on screen it fires straight up off the window's top instead, and "ZOLTRAAK!!!" stands beside the circle, out of the beam's way. | Arms up, they raise barriers like Fern's: a flat honeycomb of about a dozen hexagons, thin white edges over translucent teal glass, popping in cell by cell and buzzing as the beam passes |
+| World domINAtion | nerd Ina with Ao-chan | The window darkens. Ao-chan flies up from her mark over Ina's head and throws herself open in a dark aura, her eye glowing red. Ina's lenses glare red and her head jolts back. "WORLD DOMINATION", with INA in Ao-chan's pink | Wide-eyed, sweating and trembling under a flashing "!!", then they bow again and again with arms raised |
+| Zoltraak | Frieren Ina | A magic circle opens over her head, lightning strikes it twice, it charges and fires a beam across the whole window at the takodachis. With none on screen it fires straight up off the window's top instead, and "ZOLTRAAK!!!" stands beside the circle, out of the beam's way. | Arms up, they raise barriers like Fern's: a flat honeycomb of about a dozen hexagons, thin white edges over translucent teal glass, popping in cell by cell and holding as the beam passes |
 
 ## How it fits the scene
 
@@ -63,9 +63,27 @@ show over her head, and every takodachi on screen reacts. Three shows:
 - Both the prompt and the command count. "Commit this" followed by `git commit`
   gives two shows when they are more than 7 s apart.
 - Subagents' commits count too.
-- Zoltraak flashes the whole window white five times (two lightning strikes,
-  two more as the circle charges, and the beam); the trophy flashes gold once
-  and Ao-chan red once. The window darkens for Ao-chan and Zoltraak.
+- Each show flashes the whole window once, faintly: Zoltraak white as the
+  beam fires, the trophy gold, Ao-chan red. The window darkens for Ao-chan and
+  Zoltraak. The lightning strikes flash in their bolts alone.
+- Nothing flashes fast enough to trip the desktop app's flash guard. The types
+  say only that "a scene that flashes or is too heavy is held still". The app
+  holds the backdrop still until the next redraw, and that is what froze a show
+  partway through, along with the scene after it. In this build's code (observed, not
+  documented) a pixel counts as flashing after four swings of light and dark
+  within a second, each at least 0.1 in relative luminance (red is counted
+  apart). The guard trips when flashing pixels cover more than a quarter of any
+  341 × 256 px patch. Every layer over the same spot counts together. So the rays, the
+  aura and the magic circle turn at 0.8 s a frame, the glows breathe gently,
+  Ao-chan's eye blinks once a second, and the beam wavers at 0.6 s. Moving a big
+  sprite fast counts as flashing too, since its edges swap light and dark. So
+  Ina's head hops once for the trophy, and in Ao-chan's show and Zoltraak it
+  gives single recoils, not shakes. The takodachis tremble for half a second,
+  and the barriers hold steady rather than buzz. Keep any new or changed motion
+  as slow. These shows were checked against a throwaway port of the app's own
+  counter, kept outside the repo: at 900 × 650, 1100 × 720, 1280 × 800 and
+  1680 × 1000, with up to eight takodachis, and with redraws partway through.
+  It was also seen to catch the old shows tripping.
 - Shows last 7 s. Reduced motion shows none of them: their art rests hidden.
 - "World DomINAtion" is drawn in capitals, the only letters the font has, with
   the INA in pink.

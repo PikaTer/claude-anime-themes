@@ -346,23 +346,32 @@ export function showParts(kind, { say, mouth, nerd, aim = 'left' }) {
 }
 
 // Shared by every show: Ina's line and her mouth, the window's flash and dimming.
+//
+// The desktop app holds a backdrop still, until its next redraw, once part of it
+// flashes: light and dark swapping about four times within a second over more
+// than a quarter of a 341 x 256 px patch. So nothing big here swaps that fast,
+// counting every layer over the same spot. The rays, aura and circle turn at
+// .8s a frame, a glow breathes gently, and the window's flash stays faint against
+// the dark sky, once a show. Moving a big sprite fast swaps its edges just the
+// same, so Ina's head hops or recoils once rather than shaking.
 const BASE_CSS = `
 .v-say,.v-mo,.v-fl,.v-dim,.v-glow,.v-sp,.v-cf,.v-sg,.v-tf,.v-ex,.v-up,.v-hold,.v-br{opacity:0}
 .v-say{animation:on 4.2s ${at(1.2)}}
 .v-mo{animation:yap1 1.6s steps(1) ${at(1.2)} 2}
-.v-r1{animation:flip .4s steps(1) infinite}
-.v-r2{animation:flip .4s steps(1) -.2s infinite}
+.v-r1{animation:flip 1.6s steps(1) infinite}
+.v-r2{animation:flip 1.6s steps(1) -.8s infinite}
 .v-hov{animation:bob 1.2s steps(1) infinite}
 @keyframes vrise{from{transform:translateY(24px)}}
 @keyframes vsink{from{opacity:1}to{transform:translateY(10px);opacity:0}}
-@keyframes vflash{from{opacity:var(--f,.6)}to{opacity:0}}
+@keyframes vflash{from{opacity:var(--f,.2)}to{opacity:0}}
 @keyframes vdark{0%,to{opacity:0}12%,85%{opacity:var(--f,.5)}}
 @keyframes vshk{0%,50%{transform:translateX(-1px)}25%,75%{transform:translateX(1px)}}
+@keyframes vkick{50%,to{transform:translateX(1px)}}
 @keyframes vpop{from{transform:scale(.2)}}
 @keyframes vdrop{from{transform:translateY(-14px)}}
 @keyframes vlift{to{transform:translateY(-14px);opacity:0}}
 @keyframes vblink{0%{opacity:1}50%,to{opacity:0}}
-@keyframes vpulse{0%,to{opacity:1}50%{opacity:.6}}
+@keyframes vpulse{0%,to{opacity:1}50%{opacity:.85}}
 @keyframes vbow{0%,49%{transform:none}50%,to{transform:translateY(3px)}}
 @keyframes vfall{from{opacity:1}to{transform:translateY(150px);opacity:1}}
 `
@@ -370,12 +379,12 @@ const BASE_CSS = `
 const TROPHY_CSS = `${BASE_CSS}
 .v-rays,.v-tro{opacity:0}
 .v-tro{animation:on 6.2s ${at(0.2)},vrise .8s steps(8) ${at(0.2)} backwards,vsink .6s steps(6) ${at(6.4)}}
-.v-glow{animation:on 5.4s ${at(0.9)},vpulse 1s steps(4) ${at(0.9)} 5}
+.v-glow{animation:on 5.4s ${at(0.9)},vpulse 1.8s steps(4) ${at(0.9)} 3}
 .v-rays{animation:on 5.4s ${at(1)}}
-.v-fl{--f:.55;animation:vflash .5s steps(4) ${at(1)}}
+.v-fl{--f:.2;animation:vflash .8s steps(4) ${at(1)}}
 .v-sp{animation:twinkle .9s steps(3) calc(var(--x) + 1.2s + var(--k)) 5}
 .v-cf{animation:vfall 3s steps(15) calc(var(--x) + 1s + var(--k))}
-.v-hd{animation:hop .3s steps(3) ${at(1.1)} 3}
+.v-hd{animation:hop .3s steps(3) ${at(1.1)}}
 .v-sg{animation:on 5.4s ${atk(1.4)},vdrop .5s steps(4) ${atk(1.4)} backwards,vlift .4s steps(4) ${atk(6.4)}}
 .v-gl{animation:vblink 1.2s steps(1) infinite}
 `.replaceAll('\n', '')
@@ -385,17 +394,17 @@ const AO_SHOW_CSS = `${BASE_CSS}
 .s-ao .ao{animation:off 7s ${at(0)}}
 .v-dim{--f:.6;animation:vdark 7s ${at(0)}}
 .v-fly{animation:on 7s ${at(0)},vfly .8s steps(8) ${at(0.1)} backwards,vland .8s steps(8) ${at(6.2)}}
-.v-glow{animation:on 5.2s ${at(0.9)},vpulse .6s steps(3) ${at(0.9)} 9}
+.v-glow{animation:on 5.2s ${at(0.9)},vpulse 1.8s steps(4) ${at(0.9)} 3}
 .v-aura{animation:on 5.2s ${at(0.9)}}
 .v-aoc{animation:off 4.8s ${at(1)}}
 .v-aoo{animation:on 4.8s ${at(1)}}
-.v-eye{animation:vblink .5s steps(1) ${at(1)} 9}
-.v-fl{--f:.35;animation:vflash .6s steps(4) ${at(1)}}
+.v-eye{animation:vblink 1s steps(1) ${at(1)} 5}
+.v-fl{--f:.2;animation:vflash .8s steps(4) ${at(1)}}
 .v-red{animation:on 5.2s ${at(1)}}
-.v-hd{animation:vshk .12s steps(1) ${at(1)} 6}
+.v-hd{animation:vkick .4s steps(1) ${at(1)}}
 .v-tf{animation:on 5.8s ${atk(0.6)}}
 .v-ex{animation:vblink .3s steps(1) ${atk(0.6)} 5}
-.v-cow{animation:vshk .12s steps(1) ${atk(0.6)} 13,vbow .8s steps(1) ${atk(2.2)} 5}
+.v-cow{animation:vshk .12s steps(1) ${atk(0.6)} 4,vbow .8s steps(1) ${atk(2.2)} 5}
 .v-up{animation:vblink .8s steps(1) ${atk(2.2)} 5}
 @keyframes vfly{from{transform:translate(${FLY[0]}px,${FLY[1]}px)}}
 @keyframes vland{to{transform:translate(${FLY[0]}px,${FLY[1]}px)}}
@@ -407,17 +416,17 @@ const ZOLTRAAK_CSS = `${BASE_CSS}
 .v-mc{transform-box:fill-box;transform-origin:center;animation:on 5.2s ${at(0.3)},vpop .4s steps(4) ${at(0.3)} backwards,vsink .5s steps(5) ${at(5.5)}}
 .v-z1{animation:vblink .4s steps(2) ${at(0.5)},vblink .4s steps(2) ${at(1.7)}}
 .v-z2{animation:vblink .4s steps(2) ${at(1)},vblink .4s steps(2) ${at(2.2)}}
-.v-fl{animation:vflash .3s steps(3) ${at(0.5)},vflash .3s steps(3) ${at(1)},vflash .3s steps(3) ${at(1.7)},vflash .3s steps(3) ${at(2.2)},vflash .6s steps(4) ${at(2.6)}}
+.v-fl{--f:.25;animation:vflash .8s steps(4) ${at(2.6)}}
 .v-core{transform-box:fill-box;transform-origin:center;animation:on .6s ${at(2)},vpop .6s steps(6) ${at(2)} backwards}
 .v-in{animation:vin .6s steps(6) calc(var(--x) + 2s + var(--k))}
 .v-beam{transform-box:fill-box;transform-origin:right center;animation:on 2.2s ${at(2.6)},vpop .25s steps(5) ${at(2.6)} backwards,vfade .4s steps(4) ${at(4.8)}}
-.v-bj{transform-box:fill-box;transform-origin:center;animation:vjit .16s steps(1) infinite}
+.v-bj{transform-box:fill-box;transform-origin:center;animation:vjit 1.2s steps(1) infinite}
 .v-sky{transform-origin:center bottom;animation:on 2.2s ${at(2.6)},vgrow .25s steps(5) ${at(2.6)} backwards,vfadex .4s steps(4) ${at(4.8)}}
-.v-sky .v-bj{animation:vjitx .16s steps(1) infinite}
+.v-sky .v-bj{animation:vjitx 1.2s steps(1) infinite}
 .v-muz{transform-box:fill-box;transform-origin:center;animation:vflash .5s steps(4) ${at(2.6)},vpop .5s steps(4) ${at(2.6)}}
-.v-hd{animation:vshk .12s steps(1) ${at(0.5)} 2,hop .3s steps(3) ${at(1.1)},vshk .12s steps(1) ${at(2.6)} 18}
+.v-hd{animation:vkick .3s steps(1) ${at(0.5)},hop .3s steps(3) ${at(1.1)},vkick .4s steps(1) ${at(2.6)}}
 .v-hold{animation:on 3.6s ${atk(1.9)}}
-.v-br{animation:on 3.6s ${atk(1.9)},vbuzz .1s steps(1) ${at(2.6)} 22}
+.v-br{animation:on 3.6s ${atk(1.9)}}
 .v-hx{transform-box:fill-box;transform-origin:center;animation:vcell .3s steps(3) calc(var(--x) + 1.9s + var(--k) + var(--c)) backwards}
 @keyframes vcell{from{transform:scale(.3);opacity:0}}
 @keyframes vin{from{transform:translate(var(--dx),var(--dy));opacity:1}to{opacity:1}}
@@ -426,5 +435,4 @@ const ZOLTRAAK_CSS = `${BASE_CSS}
 @keyframes vfadex{from{opacity:1}to{transform:scaleX(0);opacity:0}}
 @keyframes vgrow{from{transform:scaleY(0)}}
 @keyframes vjitx{50%{transform:scaleX(.75)}}
-@keyframes vbuzz{0%,to{opacity:1}50%{opacity:.55}}
 `.replaceAll('\n', '')
