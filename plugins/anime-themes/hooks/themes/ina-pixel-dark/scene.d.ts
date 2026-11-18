@@ -25,3 +25,5 @@ export function join(scene: Scene, id: string): Scene
 export function leave(scene: Scene, id: string): Scene
 /** Characters of Ina's lines the pixel font cannot draw: empty when every line can be drawn. */
 export function missingGlyphs(): string[]
+/** The markup of one of Ina's speech bubbles, as `draw` places it. */
+export function speechMarkup(text: string): string

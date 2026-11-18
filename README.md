@@ -4,7 +4,7 @@ A Claude Code plugin marketplace of anime-inspired themes. One plugin, `anime-th
 
 | Theme | What it is |
 | --- | --- |
-| `ina-pixel-dark` | Purple on black, with a pixel Ina who naps while idle, works in nerd glasses, and a takodachi for every subagent. On one turn in four a summoning circle brings Frieren Ina instead, and her takodachis carry Fern's staff |
+| `ina-pixel-dark` | Purple on black, with a pixel Ina who naps while idle, works in nerd glasses, and a takodachi for every subagent. On one turn in four a summoning circle brings Frieren Ina instead, and her takodachis carry Fern's staff. On one turn in five Ao-chan, Ina's grimoire, rises out of the circle to keep her company |
 
 ## Requirements
 

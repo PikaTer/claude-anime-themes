@@ -1,7 +1,7 @@
 import { expect, mock, test } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 
-import { ASLEEP, ask, doze, draw, join, leave, missingGlyphs, resume, wake } from './themes/ina-pixel-dark/scene.js'
+import { ASLEEP, ask, doze, draw, join, leave, missingGlyphs, resume, speechMarkup, wake } from './themes/ina-pixel-dark/scene.js'
 
 const BACKDROP = {
   plugin: 'anime-themes',
@@ -144,7 +144,8 @@ test('takodachis keep to the left, apart, and the scene fits its limit', () => {
   expect(draw({ ...going, takos: [...busy.takos.map(tako => ({ ...tako, phase: 'in' as const })), ...going.takos] }).length).toBeLessThan(131072)
   expect(doze(going, 't', 'done').takos).toEqual([])
   // Frieren Ina leaving, her staffed takodachis all coming and going too.
-  const staffed = ids.reduce(join, wake(ASLEEP, FRIEREN))
+  // Frieren Ina and Ao-chan leaving together.
+  const staffed = ids.reduce(join, wake(ASLEEP, BOTH))
   const parting = doze(ids.reduce(leave, staffed), 'd', 'ask')
   expect(
     draw({ ...parting, takos: [...staffed.takos.map(tako => ({ ...tako, phase: 'in' as const })), ...parting.takos] }).length,
@@ -154,6 +155,91 @@ test('takodachis keep to the left, apart, and the scene fits its limit', () => {
 // Turn ids, and the first of them that summons Frieren Ina.
 const TURNS = Array.from({ length: 400 }, (_, i) => `turn-${i}`)
 const FRIEREN = TURNS.find(id => wake(ASLEEP, id).form === 'frieren') ?? 'none'
+// Turn ids that bring Ao-chan: with nerd Ina, and with Frieren Ina.
+const AO = TURNS.find(id => wake(ASLEEP, id).ao && wake(ASLEEP, id).form === 'nerd') ?? 'none'
+const BOTH = TURNS.find(id => wake(ASLEEP, id).ao && wake(ASLEEP, id).form === 'frieren') ?? 'none'
+
+test('Ao-chan comes on about one wake in five, with either Ina', () => {
+  const came = TURNS.filter(id => wake(ASLEEP, id).ao)
+
+  expect(came.length).toBeGreaterThan(50)
+  expect(came.length).toBeLessThan(115)
+  expect(AO).not.toBe('none')
+  expect(BOTH).not.toBe('none')
+  // The other tests' turns come without her.
+  for (const id of ['t', 't1', 't2', 't3', FRIEREN]) {
+    expect(wake(ASLEEP, id).ao).toBe(false)
+  }
+})
+
+test('Ao-chan stays the whole turn and is gone after Ina dozes', () => {
+  const on = wake(ASLEEP, AO)
+
+  expect(resume(ask(on, 'q'), 'q').ao).toBe(true)
+  expect(leave(join(on, 'a'), 'a').ao).toBe(true)
+  expect(wake(on, 'again').ao).toBe(true)
+  expect(doze(on, 'd', 'done').ao).toBe(true)
+  expect(join(doze(on, 'd', 'done'), 'a').ao).toBe(false)
+})
+
+test('the scene draws Ao-chan arriving, resting and leaving, and Ina greets her', () => {
+  const on = wake(ASLEEP, AO)
+  // Ao-chan's own group: from her tag to the Z's that follow it.
+  const hers = (svg: string) => svg.split('class="ao"')[1]?.split('class="zzz"')[0] ?? ''
+
+  expect(draw(on)).toContain('class="ao"')
+  expect(draw(on)).toContain('class="ao-in"')
+  expect(draw(on)).toContain(speechMarkup('AO-CHAN!!'))
+  expect(draw(wake(ASLEEP, BOTH))).toContain(speechMarkup('AO-CHAN GET!'))
+  expect(draw(wake(ASLEEP, BOTH))).toContain('class="fh"')
+  // A takodachi joining mid-arrival: she is there, at rest.
+  const joined = draw(join(on, 'a'))
+  expect(joined).toContain('class="ao-on"')
+  expect(joined).not.toContain('class="ao-in"')
+  // She holds still on a question.
+  const held = hers(draw(ask(on, 'q')))
+  expect(held).toContain('ao-on')
+  expect(held).not.toMatch(/animation/)
+  // She leaves as Ina dozes, and Ina sees her off, unless a question is waiting.
+  expect(draw(doze(on, 'd', 'done'))).toContain('class="ao-out"')
+  expect(draw(doze(on, 'd', 'done'))).toContain(speechMarkup('BYE BYE,\nAO-CHAN~'))
+  expect(draw(doze(on, 'd', 'ask'))).not.toContain(speechMarkup('BYE BYE,\nAO-CHAN~'))
+  // Never without her roll, and gone once Ina sleeps.
+  for (const svg of [draw(wake(ASLEEP, 't')), draw(ASLEEP), draw(join(doze(on, 'd'), 'a'))]) {
+    expect(svg).not.toContain('class="ao"')
+    expect(svg).not.toContain(speechMarkup('AO-CHAN!!'))
+  }
+})
+
+test('Ao-chan glows in, blinks from the start, and keeps her sparkles off the bubble', () => {
+  const svg = draw(wake(ASLEEP, AO))
+  const css = svg.match(/<style>(.*?)<\/style>/)?.[1] ?? ''
+
+  // The glow and motes are beside her rising book, not in it.
+  expect(css).toMatch(/\.ao \.ag\{animation/)
+  expect(css).toMatch(/\.ao \.am\{animation/)
+  // A turn with nothing else happening stays a wake: she blinks and glances in it.
+  expect(css).toMatch(/\.ao-in \.ak\{animation:[^}]*aoblink/)
+  expect(css).toMatch(/\.wake \.agl\{animation/)
+  // The flutter lives in a <use>d copy: styled on its own.
+  expect(css).toMatch(/(^|\})\.af\{animation/)
+  // The head bobs from 1.2 s whoever is out; the hops go over it.
+  expect(css).toMatch(/\.a\.wake \.head\{animation:bob 1s steps\(1\) 1\.2s infinite,hop/)
+  expect(svg.indexOf('class="asp"')).toBeLessThan(svg.indexOf(speechMarkup('AO-CHAN!!')))
+  // Her glow stays about her own width.
+  expect(svg).toMatch(/class="ag"[^>]*rx="10"/)
+})
+
+test("Ao-chan's lines come up while she is out, and only then", () => {
+  const hers = ['READ ALONG,\nAO-CHAN~', 'WHICH PAGE,\nAO-CHAN?', 'NO PEEKING,\nAO-CHAN!', 'AO-CHAN SAYS HI~']
+  const said = (scene: ReturnType<typeof wake>) => hers.some(line => draw(scene).includes(speechMarkup(line)))
+  const turns = TURNS.slice(0, 120)
+  const with_ = turns.map(id => ({ ...wake(ASLEEP, AO), seed: Number(id.slice(5)) * 2654435761 >>> 0 }))
+
+  expect(with_.filter(said).length).toBeGreaterThan(30)
+  expect(with_.filter(said).length).toBeLessThan(90)
+  expect(turns.map(id => wake(ASLEEP, id)).filter(scene => !scene.ao).some(said)).toBe(false)
+})
 
 test('Frieren Ina comes up on about one wake in four, with every face', () => {
   const summoned = TURNS.map(id => wake(ASLEEP, id)).filter(scene => scene.form === 'frieren')

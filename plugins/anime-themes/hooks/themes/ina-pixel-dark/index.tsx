@@ -36,7 +36,7 @@ const LOOK: ThemeSetArgs = {
   backdrop: { scene: SCENE, glass: { blur: 0, tint: '#07050c', opacity: 0.5 } },
 }
 
-const scene = atom({ plugin: 'anime-themes', key: 'ina-scene' } as const, ASLEEP, { shape: 'scene-3' })
+const scene = atom({ plugin: 'anime-themes', key: 'ina-scene' } as const, ASLEEP, { shape: 'scene-4' })
 
 // The desktop app draws its sidebar and its right-hand panel over the backdrop:
 // the takodachis and Ina stand this far in, past them. `/ina-insets` changes it.
@@ -114,11 +114,12 @@ export const registerIna: Register = on => {
     // A phone has no side panels.
     const edges = e.surface === 'mobile' ? undefined : await read($, insets)
     const busy = now.takos.filter(tako => tako.phase !== 'out').length
+    const awake = now.ina !== 'sleep' && now.ina !== 'doze'
 
     return (
       <Svg
         source={draw(now, edges)}
-        alt={`A pixel Ina, ${now.ina === 'sleep' || now.ina === 'doze' ? 'asleep' : now.ina === 'wait' ? 'waiting for an answer' : now.form === 'frieren' ? 'summoned as Frieren, elf ears and all' : 'working in nerd glasses'}${busy > 0 ? `, and ${busy} takodachi at work` : ''}`}
+        alt={`A pixel Ina, ${!awake ? 'asleep' : now.ina === 'wait' ? 'waiting for an answer' : now.form === 'frieren' ? 'summoned as Frieren, elf ears and all' : 'working in nerd glasses'}${awake && now.ao ? ', with Ao-chan the grimoire' : ''}${busy > 0 ? `, and ${busy} takodachi at work` : ''}`}
       />
     )
   })
@@ -128,7 +129,7 @@ export const ina: Theme = {
   id: 'ina-pixel-dark',
   aliases: ['ina'],
   label: 'Ina pixel dark',
-  blurb: 'Purple on black, with a pixel Ina who naps while idle, works in nerd glasses (or now and then is summoned as Frieren), and a takodachi for every subagent',
+  blurb: 'Purple on black, with a pixel Ina who naps while idle, works in nerd glasses (or now and then is summoned as Frieren), now and then with Ao-chan, her grimoire, and a takodachi for every subagent',
   swatch: ['#07050c', '#191327', '#9b7fe0', '#d48bd8', '#f6a440', '#ece6fa'],
   look: LOOK,
   warning: problems.find(line => line.startsWith("Desktop won't paint")),

@@ -2,6 +2,7 @@
 
 import { both, curls, grid, line, mirror, plot, px, round, rows, tentacle } from './pixels.js'
 import { COVER, FAREWELL, FR_SAY, FR_WAKE, GLINT, KANA, STAFF, frierenBack, frierenFront, summonFx } from './frieren.js'
+import { AO_BYE, AO_CSS, AO_DEFS, AO_GET, AO_HI, AO_SAY, AO_SPARKS, aoChan } from './ao.js'
 
 // Ina's head, left half: 42 x 32 once mirrored.
 const HEAD = mirror([
@@ -142,6 +143,7 @@ function speech(text) {
 
   return px(rows, 44 - rows[1].length, -1 - rows.length)
 }
+export const speechMarkup = speech
 
 // What Ina says, by what just happened. Upper case: the font has no other.
 const SAY = {
@@ -174,7 +176,7 @@ function two(pool, seed) {
  * What Ina says in a scene: `once` at a moment (for `dur` seconds), on a
  * `loop`, or to `stay` (from `at`, when that is later than the start).
  */
-function lines({ ina, cue, seed, form }) {
+function lines({ ina, cue, seed, form, ao }) {
   const pick = pool => pool[seed % pool.length]
   const once = (pool, at) => ({ text: pick(pool), at, kind: 'once' })
   const stay = (pool, at = 0.1) => ({ text: pick(pool), at, kind: 'stay' })
@@ -187,15 +189,26 @@ function lines({ ina, cue, seed, form }) {
   if (ina === 'doze' && frieren) {
     return [{ text: FAREWELL, at: 0.1, kind: 'once' }, ...(cue === 'ask' ? [stay(SAY.ask, 4.6)] : [])]
   }
+  // Ina sees Ao-chan off, unless a question is waiting.
+  if (ina === 'doze' && ao && cue !== 'ask') {
+    return [{ text: AO_BYE, at: 0.1, kind: 'once' }]
+  }
   if (ina === 'sleep' || ina === 'doze') {
     return cue === 'ask' ? [stay(SAY.ask)] : ina === 'doze' ? [once(SAY[cue] ?? SAY.done, 0.1)] : []
   }
-  const woken = frieren ? [{ text: FR_WAKE, at: 0.4, kind: 'once', dur: 1 }] : [once(SAY.wake, 0.6)]
+  // Ao-chan wakes nerd Ina; Frieren Ina greets her once the summoning is done.
+  const woken = frieren
+    ? [{ text: FR_WAKE, at: 0.4, kind: 'once', dur: 1 }, ...(ao ? [{ text: AO_GET, at: 2, kind: 'once', dur: 1.8 }] : [])]
+    : ao
+      ? [{ text: AO_HI, at: 0.6, kind: 'once' }]
+      : [once(SAY.wake, 0.6)]
   const first = ina === 'wake' ? woken : SAY[cue] ? [once(SAY[cue], 0.2)] : []
   const usual = two(SAY.work, seed)
   // Hers come up two times in three.
   const own = two(FR_SAY, seed >>> 12)
-  const said = frieren ? usual.map((line, i) => ((seed >>> (20 + 4 * i)) % 3 < 2 ? own[i] : line)) : usual
+  const theirs = frieren ? usual.map((line, i) => ((seed >>> (20 + 4 * i)) % 3 < 2 ? own[i] : line)) : usual
+  // With Ao-chan out, the second line is for her half the time.
+  const said = ao && (seed >>> 28) % 2 === 0 ? [theirs[0], AO_SAY[(seed >>> 16) % AO_SAY.length]] : theirs
 
   return [
     ...first,
@@ -207,7 +220,7 @@ function lines({ ina, cue, seed, form }) {
 
 /** Characters of Ina's lines the pixel font cannot draw: empty when every line can be drawn. */
 export function missingGlyphs() {
-  const all = [...Object.values(SAY).flat(), ...FR_SAY, FR_WAKE, FAREWELL, 'WAH!']
+  const all = [...Object.values(SAY).flat(), ...FR_SAY, FR_WAKE, FAREWELL, ...AO_SAY, AO_HI, AO_GET, AO_BYE, 'WAH!']
 
   return [...new Set(all.join('').replaceAll('\n', ''))].filter(char => FONT[char] === undefined)
 }
@@ -347,7 +360,7 @@ const plays = (slot, delay, loop, once) =>
 /** A line that stays: up at once, or hidden until its moment. */
 const stays = slot => (slot.at > 1 ? `opacity:1;animation:off ${slot.at}s` : 'opacity:1')
 
-function ina(scene, said) {
+function ina(scene, said, wahs) {
   const frieren = scene.form === 'frieren'
   const bubbles = said
     .map(slot => `<g class="say" style="${plays(slot, slot.at, 'say', `on ${slot.dur ?? 2.4}s`) || stays(slot)}">${speech(slot.text)}</g>`)
@@ -367,8 +380,9 @@ function ina(scene, said) {
     : `<g class="nh">${HEAD_ART}${GLASSES}</g>`
 
   return (
-    `<g class="sigil">${SIGIL}</g>${summoning}<g class="zzz">${ZZZ}</g>${bubbles}` +
-    `<g class="head">${heads}${mouths}</g>${frieren && scene.ina === 'doze' ? COVER : ''}`
+    `<g class="sigil">${SIGIL}</g>${summoning}${aoChan(scene, wahs, { plays, ink: INK })}<g class="zzz">${ZZZ}</g>` +
+    // Her greeting's sparkles, under the bubbles.
+    `${scene.ao && scene.ina === 'wake' ? AO_SPARKS : ''}${bubbles}<g class="head">${heads}${mouths}</g>${frieren && scene.ina === 'doze' ? COVER : ''}`
   )
 }
 
@@ -474,7 +488,7 @@ const WAH_ECHO = (() => {
 })()
 
 const DEFS =
-  `<g id="staff">${STAFF}</g><g id="tako">${TAKO}</g><g id="ring">${RING}</g><g id="grab">${GRAB}</g><g id="wah">${WAH_ECHO}</g>${MARK_DEFS}`
+  `<g id="staff">${STAFF}</g><g id="tako">${TAKO}</g><g id="ring">${RING}</g><g id="grab">${GRAB}</g><g id="wah">${WAH_ECHO}</g>${AO_DEFS}${MARK_DEFS}`
 
 const ENTER = ['circle', 'tentacle', 'pop', 'fall', 'ink']
 const EXIT = ['circle', 'tentacle', 'ascend', 'ink', 'sink']
@@ -604,6 +618,7 @@ const CSS = `
 @keyframes dim{from{opacity:1}}
 @keyframes pulse{50%{opacity:.7}}
 @keyframes blink{0%,35%,to{opacity:0}45%,85%{opacity:var(--o)}}
+${AO_CSS}
 @media (prefers-reduced-motion:reduce){*{animation:none!important}}
 `.replaceAll('\n', '')
 
@@ -618,7 +633,9 @@ export function draw(scene, { left = 0, right = 0 } = {}) {
   // She finishes her line before she dozes off.
   // Frieren Ina is sent back first, and regular Ina has a moment awake.
   const lull = scene.form === 'frieren' ? 5 : scene.cue === 'ask' ? 3 : 2.4
-  const state = `${scene.ina}${scene.form === 'frieren' ? ' f' : ''}`
+  const state = `${scene.ina}${scene.form === 'frieren' ? ' f' : ''}${scene.ao ? ' a' : ''}`
+  // When Ao-chan rises: as nerd Ina wakes, or once Frieren Ina is summoned.
+  const rises = scene.form === 'frieren' ? 1.9 : 0.2
 
   // No viewBox on the root: one unit is one CSS pixel, so the sprites keep whole
   // pixels at any window size, pinned to the edges by the nested svgs. The
@@ -633,12 +650,12 @@ export function draw(scene, { left = 0, right = 0 } = {}) {
     `<svg x="100%" y="100%" overflow="visible"><g transform="translate(${-right} 0)"><g class="ina-s">${TENTACLE_LOW}</g></g></svg>` +
     // The takodachis' own left edge: what reaches past it is cut, so a tentacle comes out from behind it.
     `<svg x="${left}">${scene.takos.map(tako => takodachi(tako, wahs)).join('')}</svg>` +
-    `<svg x="100%" y="50%" overflow="visible"><g transform="translate(${-right} 0)"><g class="ina-s"><g transform="translate(-52 -16)" class="${state}" style="--d:${lull}s">${ina(scene, said)}</g></g></g></svg>` +
+    `<svg x="100%" y="50%" overflow="visible"><g transform="translate(${-right} 0)"><g class="ina-s"><g transform="translate(-52 -16)" class="${state}" style="--d:${lull}s;--a:${rises}s">${ina(scene, said, wahs)}</g></g></g></svg>` +
     `</svg>`
   )
 }
 
-export const ASLEEP = { ina: 'sleep', cue: 'none', seed: 0, form: 'nerd', face: 'plain', takos: [] }
+export const ASLEEP = { ina: 'sleep', cue: 'none', seed: 0, form: 'nerd', face: 'plain', ao: false, takos: [] }
 
 const working = scene => scene.ina === 'wake' || scene.ina === 'work'
 const asleep = scene => scene.ina === 'sleep' || scene.ina === 'doze'
@@ -653,12 +670,17 @@ const settle = (scene, id) => ({
   // Frieren Ina leaves as she dozes: what wakes next is regular Ina, or a new roll.
   form: scene.ina === 'doze' ? 'nerd' : scene.form,
   face: scene.ina === 'doze' ? 'plain' : scene.face,
+  // Ao-chan goes home as Ina dozes.
+  ao: scene.ina === 'doze' ? false : scene.ao,
   takos: scene.takos.filter(tako => tako.phase !== 'out').map(tako => ({ ...tako, phase: 'on' })),
 })
 
 const FACES = ['plain', 'smug', 'cute']
 
-/** The main agent starts a turn. From sleep, one wake in four summons Frieren Ina. */
+/**
+ * The main agent starts a turn. From sleep, one wake in four summons Frieren
+ * Ina, and, on a roll of her own, one in five brings Ao-chan along.
+ */
 export function wake(scene, id) {
   const next = { ...settle(scene, id), cue: 'none' }
 
@@ -666,10 +688,11 @@ export function wake(scene, id) {
     return { ...next, ina: 'work' }
   }
   const roll = hash(`frieren:${id}`)
+  const ao = hash(`ao:${id}`) % 5 === 0
 
   return roll % 4 === 0
-    ? { ...next, ina: 'wake', form: 'frieren', face: FACES[(roll >>> 8) % FACES.length] }
-    : { ...next, ina: 'wake', form: 'nerd', face: 'plain' }
+    ? { ...next, ina: 'wake', form: 'frieren', face: FACES[(roll >>> 8) % FACES.length], ao }
+    : { ...next, ina: 'wake', form: 'nerd', face: 'plain', ao }
 }
 
 /** The main agent's turn ends: `cue` is `done`, `ask`, `stop` or `oops`. */

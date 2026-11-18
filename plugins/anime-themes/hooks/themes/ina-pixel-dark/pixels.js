@@ -35,6 +35,12 @@ export const PAL = {
   l: '#8e5fd0', // Fern's ribbon
   L: '#c39cf2', // ribbon light, sparkle
   n: '#7c6aa8', // Frieren's iris
+  a: '#4a3d66', // Ao-chan's cover
+  A: '#2e2547', // her spine
+  i: '#7a6aa0', // her cover's line-work
+  P: '#e24d78', // her eye
+  C: '#f4ead2', // her pages
+  c: '#b7a98a', // the words on them
 }
 
 /** Rows of pixels to one `<path>` per color, each run of a row one rectangle. */

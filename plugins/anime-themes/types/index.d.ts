@@ -30,6 +30,8 @@ export type Scene = {
   form: 'nerd' | 'frieren'
   /** Frieren Ina's face this turn; `plain` for nerd Ina. */
   face: 'plain' | 'smug' | 'cute'
+  /** Ao-chan, Ina's grimoire, came this turn: one wake in five. */
+  ao: boolean
   takos: Tako[]
 }
 
