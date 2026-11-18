@@ -1,0 +1,88 @@
+<!doctype html>
+<html>
+  <body style="margin: 0; background: #07050c">
+    <script type="module">
+      import { detector } from './detector.js'
+
+      // Grids the window is sampled as: a coarse one, a fine one, and one of a
+      // random size and offset, so a flash cannot hide between cells.
+      const grids = () => {
+        const [a, b, c, d] = Array.from({ length: 4 }, Math.random)
+        const width = 65 + 31 * a
+        const height = 41 + 19 * b
+
+        return [
+          { name: 'coarse', cols: 64, rows: 40, scale: [64, 40], offset: [0, 0] },
+          { name: 'fine', cols: 160, rows: 100, scale: [160, 100], offset: [0, 0] },
+          { name: 'jitter', cols: Math.ceil(width + c), rows: Math.ceil(height + d), scale: [width, height], offset: [c, d] },
+        ]
+      }
+
+      // On the page, full window, under the last: Chrome animates an SVG image only while it is shown.
+      const load = url =>
+        new Promise((done, fail) => {
+          const img = new Image()
+          img.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh'
+          img.onload = () => {
+            for (const old of [...document.images].filter(other => other !== img)) {
+              old.remove()
+            }
+            done(img)
+          }
+          img.onerror = () => fail(new Error(`could not load ${url}`))
+          img.src = url
+          document.body.append(img)
+        })
+
+      /**
+       * Play a case's steps (each an SVG drawn as the app would redraw it, `t`
+       * seconds in) for `seconds`, and say when, if at all, each grid tripped.
+       */
+      window.play = async (steps, seconds, width, height) => {
+        // An SVG image starts its animations as it loads: each redraw loads at its moment.
+        let current = await load(steps[0].url)
+        let next = 1
+        const sampled = grids().map(grid => {
+          const canvas = document.createElement('canvas')
+          canvas.width = grid.cols
+          canvas.height = grid.rows
+          const ctx = canvas.getContext('2d', { willReadFrequently: true })
+          ctx.fillStyle = '#07050c'
+
+          return { ...grid, ctx, check: detector({ cols: grid.cols, rows: grid.rows, width, height }), trip: null }
+        })
+        const start = performance.now()
+
+        await new Promise(done => {
+          const frame = () => {
+            const now = performance.now()
+            const at = (now - start) / 1000
+
+            if (at > seconds) {
+              done()
+              return
+            }
+            if (next < steps.length && at >= steps[next].t) {
+              load(steps[next++].url).then(img => (current = img))
+            }
+            for (const grid of sampled) {
+              if (grid.trip !== null) {
+                continue
+              }
+              grid.ctx.fillRect(0, 0, grid.cols, grid.rows)
+              grid.ctx.drawImage(current,grid.offset[0], grid.offset[1], grid.scale[0], grid.scale[1])
+              if (grid.check(grid.ctx.getImageData(0, 0, grid.cols, grid.rows).data, now)) {
+                grid.trip = Number(at.toFixed(2))
+              }
+            }
+            requestAnimationFrame(frame)
+          }
+          requestAnimationFrame(frame)
+        })
+
+        return Object.fromEntries(sampled.map(grid => [grid.name, grid.trip]))
+      }
+      window.ready = true
+    </script>
+  </body>
+</html>

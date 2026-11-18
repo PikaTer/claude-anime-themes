@@ -81,9 +81,10 @@ show over her head, and every takodachi on screen reacts. Three shows:
   gives single recoils, not shakes. The takodachis tremble for half a second,
   and the barriers hold steady rather than buzz. Keep any new or changed motion
   as slow. These shows were checked against a throwaway port of the app's own
-  counter, kept outside the repo: at 900 × 650, 1100 × 720, 1280 × 800 and
-  1680 × 1000, with up to eight takodachis, and with redraws partway through.
-  It was also seen to catch the old shows tripping.
+  counter: at 900 × 650, 1100 × 720, 1280 × 800 and 1680 × 1000, with up to
+  eight takodachis, and with redraws partway through. It was also seen to catch
+  the old shows tripping. `tools/flash-check` now does the same with its own
+  reimplementation of the rule: run it after any change to how the scene moves.
 - Shows last 7 s. Reduced motion shows none of them: their art rests hidden.
 - "World DomINAtion" is drawn in capitals, the only letters the font has, with
   the INA in pink.
