@@ -755,7 +755,8 @@ const FACES = ['plain', 'smug', 'cute']
 
 /**
  * The main agent starts a turn. From sleep, one wake in four summons Frieren
- * Ina, and, on a roll of her own, one in five brings Ao-chan along. Her hair's
+ * Ina and about one in five cat Ina, Ninyomanyo Ninya'nis, and, on a roll of
+ * her own, one in five brings Ao-chan along. Her hair's
  * ends are rolled too, any of six alike. With `now`
  * (milliseconds, `$.clock.now()`'s), the turn opens with a show once she is up.
  */
@@ -768,13 +769,14 @@ export function wake(scene, id, now) {
   const roll = hash(`frieren:${id}`)
   const ao = hash(`ao:${id}`) % 5 === 0
   const hair = HAIRS[hash(`hair:${id}`) % HAIRS.length]
+  // Cat Ina on 4 in 15 of the wakes Frieren Ina leaves: about one in five.
   const woke =
     roll % 4 === 0
       ? { ...next, ina: 'wake', form: 'frieren', face: FACES[(roll >>> 8) % FACES.length], hair, ao }
-      : { ...next, ina: 'wake', form: 'nerd', face: 'plain', hair, ao }
+      : { ...next, ina: 'wake', form: (roll >>> 14) % 15 < 4 ? 'cat' : 'nerd', face: 'plain', hair, ao }
 
-  // Her greeting first: Frieren Ina's summoning, or nerd Ina's wake line.
-  return now === undefined ? woke : stage(woke, id, now, woke.form === 'frieren' ? 4 : 3.1)
+  // Her greeting first: Frieren or cat Ina's transformation, or nerd Ina's wake line.
+  return now === undefined ? woke : stage(woke, id, now, woke.form === 'nerd' ? 3.1 : 4)
 }
 
 /** When the scene's show ends, in milliseconds; `undefined` with none. */
@@ -793,7 +795,7 @@ const showing = (scene, now) => scene.special !== null && scene.special !== unde
 const aimAt = scene => (scene.takos.some(tako => tako.phase !== 'out') ? 'left' : 'up')
 
 /**
- * A show, `delay` seconds from `now`: Zoltraak for Frieren Ina; for nerd Ina,
+ * A show, `delay` seconds from `now`: Zoltraak for Frieren Ina; for nerd or cat Ina,
  * Ao-chan's if she is out, else a gold trophy, Ao-chan coming for it on one in three.
  */
 function stage(scene, id, now, delay) {
@@ -868,6 +870,8 @@ export function join(scene, id) {
     exit: EXIT[(code >>> 20) % EXIT.length],
     // Fern's staff, for any that come while Frieren Ina is out.
     staff: next.form === 'frieren',
+    // Cat ears, for any that come while cat Ina is out.
+    ears: next.form === 'cat',
     phase: 'in',
   }
 

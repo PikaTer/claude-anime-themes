@@ -160,6 +160,38 @@ const FRIEREN = TURNS.find(id => wake(ASLEEP, id).form === 'frieren') ?? 'none'
 // Turn ids that bring Ao-chan: with nerd Ina, and with Frieren Ina.
 const AO = TURNS.find(id => wake(ASLEEP, id).ao && wake(ASLEEP, id).form === 'nerd') ?? 'none'
 const BOTH = TURNS.find(id => wake(ASLEEP, id).ao && wake(ASLEEP, id).form === 'frieren') ?? 'none'
+// Turn ids that summon cat Ina: alone, and with Ao-chan.
+const CAT = TURNS.find(id => wake(ASLEEP, id).form === 'cat' && !wake(ASLEEP, id).ao) ?? 'none'
+const CAT_AO = TURNS.find(id => wake(ASLEEP, id).form === 'cat' && wake(ASLEEP, id).ao) ?? 'none'
+
+test('cat Ina comes up on about one wake in five, never as Frieren', () => {
+  const woke = TURNS.map(id => wake(ASLEEP, id))
+  const cats = woke.filter(scene => scene.form === 'cat')
+
+  expect(cats.length).toBeGreaterThan(50)
+  expect(cats.length).toBeLessThan(115)
+  expect(woke.filter(scene => scene.form === 'frieren').length).toBeGreaterThan(60)
+  expect(CAT).not.toBe('none')
+  expect(CAT_AO).not.toBe('none')
+  // The other tests' turns never summon her.
+  for (const id of ['t', 't1', 't2', 't3', 'next']) {
+    expect(wake(ASLEEP, id).form).not.toBe('cat')
+  }
+})
+
+test("cat Ina stays the turn, her takodachis have ears, and she's gone after she dozes", () => {
+  const cat = wake(ASLEEP, CAT)
+
+  expect(resume(ask(cat, 'q'), 'q').form).toBe('cat')
+  expect(wake(cat, 'again').form).toBe('cat')
+  expect(join(cat, 'a').takos[0]).toMatchObject({ ears: true, staff: false })
+  expect(join(wake(ASLEEP, 't'), 'a').takos[0]?.ears).toBe(false)
+  expect(join(wake(ASLEEP, FRIEREN), 'a').takos[0]?.ears).toBe(false)
+  expect(join(doze(cat, 'd', 'done'), 'a').form).toBe('nerd')
+  // A prompt's show waits for her arrival, and is never Zoltraak.
+  expect(wake(ASLEEP, CAT, 1000).special).toMatchObject({ at: 5000 })
+  expect(wake(ASLEEP, CAT, 1000).special?.kind).not.toBe('zoltraak')
+})
 
 test('Ao-chan comes on about one wake in five, with either Ina', () => {
   const came = TURNS.filter(id => wake(ASLEEP, id).ao)

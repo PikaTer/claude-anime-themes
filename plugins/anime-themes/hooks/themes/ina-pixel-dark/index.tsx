@@ -36,7 +36,7 @@ const LOOK: ThemeSetArgs = {
   backdrop: { scene: SCENE, glass: { blur: 0, tint: '#07050c', opacity: 0.5 } },
 }
 
-const scene = atom({ plugin: 'anime-themes', key: 'ina-scene' } as const, ASLEEP, { shape: 'scene-6' })
+const scene = atom({ plugin: 'anime-themes', key: 'ina-scene' } as const, ASLEEP, { shape: 'scene-7' })
 
 // The desktop app draws its sidebar and its right-hand panel over the backdrop:
 // the takodachis and Ina stand this far in, past them. `/ina-insets` changes it.

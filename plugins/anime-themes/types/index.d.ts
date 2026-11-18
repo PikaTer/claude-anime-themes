@@ -12,6 +12,8 @@ export type Tako = {
   exit: 'circle' | 'tentacle' | 'ascend' | 'ink' | 'sink'
   /** Fern's staff: it joined while Frieren Ina was out. */
   staff: boolean
+  /** Cat ears: it joined while cat Ina was out. */
+  ears: boolean
   /** `in` and `out` play once, as the scene is next drawn. */
   phase: 'in' | 'on' | 'out'
 }
@@ -40,8 +42,8 @@ export type Scene = {
   cue: 'none' | 'join' | 'leave' | 'wait' | 'back' | Ending
   /** Changes with every change of scene: which of her lines come up. */
   seed: number
-  /** Who is out: nerd Ina, or Frieren Ina, summoned on one wake in four. */
-  form: 'nerd' | 'frieren'
+  /** Who is out: nerd Ina, Frieren Ina (one wake in four), or cat Ina, Ninyomanyo Ninya'nis (about one in five). */
+  form: 'nerd' | 'frieren' | 'cat'
   /** Frieren Ina's face this turn; `plain` for nerd Ina. */
   face: 'plain' | 'smug' | 'cute'
   /** The ends of her hair, rolled as she wakes from sleep and kept till she next does. */
