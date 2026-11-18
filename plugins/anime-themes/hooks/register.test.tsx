@@ -4,6 +4,7 @@ import type { Engine } from 'claude-code/testing'
 import { lands } from './themes/ina-pixel-dark'
 import { ASLEEP, ask, carry, cheer, doze, draw, join, leave, missingGlyphs, rest, resume, speechMarkup, wake } from './themes/ina-pixel-dark/scene.js'
 import { showParts } from './themes/ina-pixel-dark/special.js'
+import { CAT_SAY } from './themes/ina-pixel-dark/cat.js'
 import type { Scene } from '../types'
 
 const BACKDROP = {
@@ -305,6 +306,35 @@ test("cat Ina's shows: a cat-eared trophy, and Ao-chan's show turned to love", (
   expect(nerd).toContain('href="#v-tf"')
   expect(nerd).not.toContain('class="v-ht"')
   expect(draw(cheer(join(wake(ASLEEP, 't'), 'a'), trophy, T))).not.toContain('class="v-cup"')
+})
+
+test("cat Ina's exit leaves her at rest as regular Ina, and her lines keep clear", () => {
+  const cat = wake(ASLEEP, CAT)
+  const css = (svg: string) => svg.match(/<style>(.*?)<\/style>/)?.[1] ?? ''
+  const dozing = css(draw(doze(cat, 'd', 'done')))
+
+  // Unanimated (reduced motion), a dozing cat Ina is regular Ina: no heart, no ears.
+  expect(dozing).toMatch(/\.c\.doze \.heart\{opacity:0;/)
+  expect(dozing).toMatch(/\.c\.doze \.cl\{opacity:0;/)
+  expect(dozing).toMatch(/\.c\.doze \.cr\{opacity:0;/)
+  expect(dozing).not.toMatch(/forwards/)
+  // Its ears still step down from up: the drop starts from shown, not from that rest.
+  expect(dozing).toMatch(/@keyframes cdown\{from\{opacity:1\}/)
+  // On a question she says "YOUR TURN~" back as regular Ina, a while before her eyes close.
+  const asked = draw(doze(cat, 'd', 'ask'))
+  const lull = Number(asked.match(/--d:([\d.]+)s/)?.[1])
+  const said = Number(asked.match(/class="say" style="opacity:1;animation:off ([\d.]+)s"/)?.[1])
+  expect(said).toBeGreaterThan(2.8)
+  expect(lull - said).toBeGreaterThanOrEqual(2)
+  // Her love line stands above Ao-chan's ears and tail, as nerd Ina's stands above her book.
+  const foot = (cat: boolean) => Number(showParts('ao', { say: (_: string, bottom: number) => `[${bottom}]`, mouth: '', nerd: !cat, cat }).front.match(/\[(-?\d+)\]/)?.[1])
+  expect(foot(false) - foot(true)).toBeGreaterThanOrEqual(6)
+  // None of her lines is wider than the theme's widest before her.
+  for (const line of CAT_SAY) {
+    for (const row of line.split('\n')) {
+      expect(row.length).toBeLessThanOrEqual('WHAT IN THE WORLD'.length)
+    }
+  }
 })
 
 test('cat Ina keeps her heart circle inside its budget', () => {
@@ -804,7 +834,7 @@ test('each show draws its stage and every takodachi its part, and holds back her
 test('every show fits the limit with Frieren Ina, Ao-chan and every takodachi coming and going', () => {
   const ids = Array.from({ length: 14 }, (_, i) => `agent-${i * 7919}`)
 
-  for (const id of ['t', AO, BOTH]) {
+  for (const id of ['t', AO, BOTH, CAT, CAT_AO]) {
     const busy = ids.reduce(join, wake(ASLEEP, id))
     const shown = cheer(busy, 'x', T)
     const going = after(shown, now => ids.reduce(leave, now), T + 500)
@@ -814,6 +844,13 @@ test('every show fits the limit with Frieren Ina, Ao-chan and every takodachi co
     expect(svg).toMatch(SHOWN)
     expect(svg.length).toBeLessThan(131072)
   }
+  // Cat Ina waking to a prompt's love show, her eared takodachis all coming in.
+  const prompted = wake(ASLEEP, CAT_AO, T)
+  const crowd = ids.reduce(join, prompted)
+  const svg = draw({ ...prompted, takos: crowd.takos.map(tako => ({ ...tako, phase: 'in' as const })) })
+  expect(prompted.special?.kind).toBe('ao')
+  expect(svg).toContain('class="v-ht"')
+  expect(svg.length).toBeLessThan(131072)
 })
 
 test('commits, deploys and merges count as work landing; reading about them does not', () => {

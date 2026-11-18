@@ -17,7 +17,7 @@ export const CAT_SAY = [
   'PURR PURR~',
   'PAWS FOR A BREAK~',
   'HISSS... A BUG!',
-  'KNEADING THE CODE~',
+  'KNEADING\nTHE CODE~',
   'LOVE THE FLOOR,\nINYA~',
 ]
 
@@ -117,7 +117,8 @@ export const aoCat = ([x, y]) =>
   `<g class="at1">${px(TAIL_A, x + 15, y - 9)}</g><g class="at2">${px(TAIL_B, x + 15, y - 9)}</g></g>`
 
 // Her CSS, drawn only while she is out. At rest she is simply there: ears up,
-// whiskers on, the heart behind her. Waking, she is surprised, sparkles
+// whiskers on, the heart behind her; and dozing, at rest, she is regular Ina
+// again, so with motion reduced nothing of hers is left over a sleeping Ina. Waking, she is surprised, sparkles
 // twinkle, an ear pops up, then the other, and the circle turns into the
 // heart; dozing, it all goes back the other way. Everything steps slowly, so
 // nothing trips the desktop app's flash guard.
@@ -132,9 +133,9 @@ export const CAT_CSS = `
 .c.wake .cl{animation:cup .4s steps(4) 1.3s backwards}
 .c.wake .cr{animation:cup .4s steps(4) 1.7s backwards}
 .c.doze .csp{animation:twinkle .9s steps(3) calc(var(--h) + 1.7s) 2}
-.c.doze .cr{animation:cdown .4s steps(4) calc(var(--h) + 1.8s) forwards}
-.c.doze .cl{animation:cdown .4s steps(4) calc(var(--h) + 2.1s) forwards}
-.c.doze .heart{animation:cout .8s steps(4) calc(var(--h) + 2s) forwards}
+.c.doze .cr{opacity:0;animation:on calc(var(--h) + 1.8s),cdown .4s steps(4) calc(var(--h) + 1.8s)}
+.c.doze .cl{opacity:0;animation:on calc(var(--h) + 2.1s),cdown .4s steps(4) calc(var(--h) + 2.1s)}
+.c.doze .heart{opacity:0;animation:on calc(var(--h) + 2s),cout .8s steps(4) calc(var(--h) + 2s)}
 .c.doze .sigil{animation:dim .6s steps(4) var(--d) backwards,cin .8s steps(4) calc(var(--h) + 2s) backwards}
 .c.doze .cf{opacity:0;animation:on calc(var(--h) + 2.8s)}
 .at2{opacity:0}
@@ -143,5 +144,5 @@ export const CAT_CSS = `
 @keyframes cin{from{opacity:0}}
 @keyframes cout{from{opacity:1}to{opacity:0}}
 @keyframes cup{from{transform:translateY(4px);opacity:0}}
-@keyframes cdown{to{transform:translateY(4px);opacity:0}}
+@keyframes cdown{from{opacity:1}to{transform:translateY(4px);opacity:0}}
 `.replaceAll('\n', '')

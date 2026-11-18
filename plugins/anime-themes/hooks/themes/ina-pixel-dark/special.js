@@ -338,8 +338,8 @@ const SKY_LINE = { bottom: ZC[1] + 4, right: ZC[0] - 18 }
  */
 export function showParts(kind, { say, mouth, nerd, cat = false, aim = 'left' }) {
   const text = (cat ? SHOW_SAY_CAT[kind] : undefined) ?? SHOW_SAY[kind]
-  // Cat ears on the trophy push her line up a little.
-  const foot = LINE_FOOT[kind] - (cat && kind === 'trophy' ? 4 : 0)
+  // Cat ears on the trophy, and Ao-chan's ears and tail, push her line up a little.
+  const foot = LINE_FOOT[kind] - (cat ? (kind === 'trophy' ? 4 : kind === 'ao' ? 8 : 0) : 0)
   const line = aim === 'up' ? say(text, SKY_LINE.bottom, SKY_LINE.right) : say(text, foot)
   const talk = `<g class="v-mo">${mouth}</g>`
   const window = (cls, fill) => `<rect class="${cls}" width="100%" height="100%" fill="${fill}"/>`

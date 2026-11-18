@@ -223,7 +223,7 @@ function lines({ ina, cue, seed, form, ao }) {
   }
   // Cat Ina's farewell, whatever the ending, as Frieren Ina's is.
   if (ina === 'doze' && cat) {
-    return [{ text: CAT_BYE, at: 0.1, kind: 'once' }, ...(cue === 'ask' ? [stay(SAY.ask, 4.6)] : [])]
+    return [{ text: CAT_BYE, at: 0.1, kind: 'once' }, ...(cue === 'ask' ? [stay(SAY.ask, 3)] : [])]
   }
   // Frieren Ina's farewell, whatever the ending; a question waits for regular Ina.
   if (ina === 'doze' && frieren) {
@@ -725,8 +725,10 @@ export function draw(scene, { left = 0, right = 0 } = {}) {
   const wahs = said.filter(slot => slot.kind !== 'stay' && (slot.text.includes('WAH') || slot.text.includes('NYAH')))
   // She finishes her line before she dozes off.
   // Frieren Ina is sent back first, and regular Ina has a moment awake.
-  // Cat Ina turns back first too, a little quicker.
-  const lull = (scene.form === 'frieren' ? 5 : scene.form === 'cat' ? 4 : scene.cue === 'ask' ? 3 : 2.4) + hold
+  // Cat Ina turns back first too, a little quicker, and on a question asks it
+  // back as regular Ina before she dozes.
+  const cat = scene.form === 'cat'
+  const lull = (scene.form === 'frieren' ? 5 : cat && scene.cue === 'ask' ? 5.4 : cat ? 4 : scene.cue === 'ask' ? 3 : 2.4) + hold
   const state = `${scene.ina}${scene.form === 'frieren' ? ' f' : scene.form === 'cat' ? ' c' : ''}${scene.ao ? ' a' : ''}${show === null ? '' : ` s-${show.kind}`}`
   const parts = show === null ? null : showParts(show.kind, { say: overHead, mouth: MOUTH_OPEN, nerd: scene.form === 'nerd', cat: scene.form === 'cat', aim: show.aim })
   // When Ao-chan rises: as nerd Ina wakes, or once Frieren or cat Ina is summoned.
