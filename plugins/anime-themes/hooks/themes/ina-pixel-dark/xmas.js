@@ -76,9 +76,21 @@ const HOLLY = ['DD.....DD', 'DSD...DSD', '.DSD.DSD.', '..DrRrD..', '...rrr...']
 const BOW = ['.oo...oo.', 'oRroooRro', 'orrRrRrro', '.ooorooo.', '...oro...']
 const RIBBON =
   '<path fill="#ff8a96" d="M13 5h1v18h-1zM3 7h14v1h-14z"/><path fill="#d8344a" d="M14 5h1v18h-1zM3 8h14v1h-14z"/>' + px(BOW, 10, 5)
+
+// The baubles on the tentacles, each on a gold hook: red, gold, blue and
+// silver, a highlight and a shaded side. A sprite is 5 x 8 (the hook's pixel on
+// its top middle), drawn once and set where the tentacles hang it.
+export const BAUBLE_SIZE = [5, 8]
+const BAUBLE = ['..J..', '..j..', '..J..', '.111.', '1h111', '11112', '11122', '.222.']
+const BAUBLE_COLORS = [['r', 'R', 'W'], ['J', 'X', 'j'], ['Q', 'B', 'O'], ['Z', 'w', 'g']]
+export const BAUBLES = BAUBLE_COLORS.length
+const BAUBLE_DEFS = BAUBLE_COLORS.map(
+  ([body, light, shade], i) =>
+    `<g id="bb${i}">${px(BAUBLE.map(row => row.replaceAll('1', body).replaceAll('h', light).replaceAll('2', shade)))}</g>`,
+).join('')
 export const XMAS_DEFS =
   `<g id="xh">${pxr(TAKO_HAT)}</g><g id="xa">${px(mirror(ANTLER))}${px(['rR', 'rr'], 11, 10)}</g>` +
-  `<g id="hl">${px(HOLLY)}</g><g id="xr">${RIBBON}</g>`
+  `<g id="hl">${px(HOLLY)}</g><g id="xr">${RIBBON}</g>${BAUBLE_DEFS}`
 export const SIGIL_HOLLY = [-2.2, 3.5, 0.75, -0.6]
   .map(angle => `<use href="#hl" x="${Math.round(21 + 47 * Math.cos(angle)) - 4}" y="${Math.round(16 + 47 * Math.sin(angle)) - 2}"/>`)
   .join('')

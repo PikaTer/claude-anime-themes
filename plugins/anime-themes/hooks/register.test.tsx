@@ -1198,3 +1198,15 @@ test("spine walks the tentacle's curve", () => {
     expect(walk[i].y).toBeLessThan(walk[i - 1].y)
   }
 })
+
+test('a festive scene defines four baubles once each, and a plain one none', () => {
+  const scene = { ...wake(ASLEEP, 't'), ina: 'work' as const }
+  const merry = draw(scene, undefined, NONE, true)
+  const plain = draw(scene, undefined, NONE)
+
+  for (const id of ['bb0', 'bb1', 'bb2', 'bb3']) {
+    expect(count(merry, `id="${id}"`)).toBe(1)
+    expect(plain).not.toContain(`id="${id}"`)
+  }
+  expect(merry).not.toContain('id="bb4"')
+})

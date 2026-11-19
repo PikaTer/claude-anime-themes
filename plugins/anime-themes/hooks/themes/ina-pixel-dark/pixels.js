@@ -51,6 +51,9 @@ export const PAL = {
   Z: '#d6d0e6', // fur, shaded
   D: '#1f6b3c', // holly
   S: '#43a35e', // holly light
+  X: '#fff3c0', // gold bauble's shine
+  Q: '#4a8fe0', // blue bauble
+  O: '#2c5aa0', // blue bauble, shaded
 }
 
 /** Rows of pixels to one `<path>` per color, each run of a row one rectangle. */
