@@ -7,7 +7,7 @@ import { XMAS_CAT, XMAS_SAY, XMAS_SHOW, XMAS_WAKE } from './themes/ina-pixel-dar
 import { showParts } from './themes/ina-pixel-dark/special.js'
 import { CAT_SAY } from './themes/ina-pixel-dark/cat.js'
 import { rollHold, tentacles } from './themes/ina-pixel-dark/held.js'
-import { px, pxr, tentacle, curls } from './themes/ina-pixel-dark/pixels.js'
+import { px, pxr, spine, tentacle, curls } from './themes/ina-pixel-dark/pixels.js'
 import type { Scene } from '../types'
 
 const BACKDROP = {
@@ -1177,4 +1177,24 @@ test('a session whose time or id cannot be read is plain', async ($, on) => {
   const svg = await ui.find({ type: 'Svg' })
   await ui.unmount()
   expect(String(svg?.props.source)).not.toContain('class="xhat"')
+})
+
+test("tentacle's pixels do not change with its spine exported", () => {
+  // A small string hash (djb2) of the rows and root.
+  const sha = (art: unknown) => [...JSON.stringify(art)].reduce((h, c) => (Math.imul(h, 33) + c.charCodeAt(0)) >>> 0, 5381)
+
+  expect(sha(tentacle(110, curls(0.4, 7)))).toBe(2742944041)
+  expect(sha(tentacle(70, curls(0.35, 8)))).toBe(219256011)
+  expect(sha(tentacle(40, t => 3 * t))).toBe(3869605043)
+})
+
+test("spine walks the tentacle's curve", () => {
+  const walk = spine(110, curls(0.4, 7))
+
+  expect(walk.length).toBe(110)
+  expect(walk[0]).toMatchObject({ i: 0, x: 0, y: 0, thick: 4.2 })
+  expect(walk.at(-1)!.thick).toBeLessThan(1.1)
+  for (let i = 1; i < 20; i++) {
+    expect(walk[i].y).toBeLessThan(walk[i - 1].y)
+  }
 })

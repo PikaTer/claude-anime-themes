@@ -147,12 +147,13 @@ export function round(cells, cx, cy, reach, color, test) {
 }
 
 /**
- * A tentacle rising from the foot of its grid and turning left by `bend`, a
- * function of how far along it is (0 to 1): its rows and the column of its root.
+ * The walk of a tentacle rising from the foot of its grid and turning left by
+ * `bend`, a function of how far along it is (0 to 1): one point a step, with
+ * its position before the grid shift, its heading and its thickness there.
  * It narrows from `thick` at the root to `tip` at the end.
  */
-export function tentacle(length, bend, thick = 4.2, [body, light, sucker] = 'uUq', tip = 1) {
-  const spine = []
+export function spine(length, bend, thick = 4.2, tip = 1) {
+  const points = []
   let x = 0
   let y = 0
 
@@ -160,20 +161,29 @@ export function tentacle(length, bend, thick = 4.2, [body, light, sucker] = 'uUq
     const t = i / length
     const heading = -Math.PI / 2 - bend(t)
 
-    spine.push({ x, y, heading, thick: (thick - tip) * (1 - t) + tip })
+    points.push({ i, t, x, y, heading, thick: (thick - tip) * (1 - t) + tip })
     x += Math.cos(heading)
     y += Math.sin(heading)
   }
-  const left = Math.floor(Math.min(...spine.map(at => at.x - at.thick)))
-  const top = Math.floor(Math.min(...spine.map(at => at.y - at.thick)))
-  const cells = grid(Math.ceil(Math.max(...spine.map(at => at.x + at.thick))) - left + 1, 1 - top)
 
-  spine.forEach(at => {
+  return points
+}
+
+/**
+ * A tentacle, as `spine` walks it, drawn: its rows and the column of its root.
+ */
+export function tentacle(length, bend, thick = 4.2, [body, light, sucker] = 'uUq', tip = 1) {
+  const walk = spine(length, bend, thick, tip)
+  const left = Math.floor(Math.min(...walk.map(at => at.x - at.thick)))
+  const top = Math.floor(Math.min(...walk.map(at => at.y - at.thick)))
+  const cells = grid(Math.ceil(Math.max(...walk.map(at => at.x + at.thick))) - left + 1, 1 - top)
+
+  walk.forEach(at => {
     at.x -= left
     at.y -= top
   })
-  spine.forEach(at => round(cells, at.x, at.y, at.thick, body, far => far < at.thick))
-  spine.forEach((at, i) => {
+  walk.forEach(at => round(cells, at.x, at.y, at.thick, body, far => far < at.thick))
+  walk.forEach((at, i) => {
     const side = (reach, turn) => [at.x + reach * Math.cos(at.heading + turn), at.y + reach * Math.sin(at.heading + turn)]
 
     plot(cells, ...side(at.thick - 1.6, Math.PI / 2), light)
