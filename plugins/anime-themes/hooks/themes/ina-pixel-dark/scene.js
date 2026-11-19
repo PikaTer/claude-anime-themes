@@ -186,7 +186,7 @@ function overHead(text, bottom, right = 44) {
 const SAY = {
   // While she works, between her WAHs.
   work: ['HUMU HUMU', 'INA INA INA~', 'TAKO TIME!', 'COMFY~', 'WAH~', 'DOODLE DOODLE', 'AO-CHAN, HELP!', "THAT'S INA-FF", 'TENTACLES, GO!', 'HEHE~', 'COOKIE BREAK?', 'WAH-T IS THIS?'],
-  wake: ['WAH?!', "I'M UP! I'M UP!", 'TAKO TIME!', 'OKAY, INA TIME~'],
+  wake: ['WAH?!', "I'M UP! I'M UP!", 'TAKO TIME!', 'OKAY, INA TIME~', 'GOOD MORNING,\nAFTERNOON,\nEVENING!'],
   join: ['HI, TAKO!', 'HELP ARRIVED~', 'WAH! A TAKO!', 'TAKODACHI!'],
   leave: ['THANKS, TAKO!', 'GOOD TAKO~', 'BYE BYE~', 'NICE WORK!'],
   // A question is up for the person, and after they answer it.

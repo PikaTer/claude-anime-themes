@@ -1120,6 +1120,44 @@ test('a festive gold trophy show is a present, with its own line', () => {
   expect(draw(cat!, undefined, NONE, true)).toContain('class="v-tro"')
 })
 
+test('a festive Zoltraak beam is Christmas colored and sparkles, a plain one is neither', () => {
+  const say = (_: string, bottom: number) => `[${_}|${bottom}]`
+  const plain = showParts('zoltraak', { say, mouth: '', nerd: false })
+  const merry = showParts('zoltraak', { say, mouth: '', nerd: false, festive: true })
+  const sky = showParts('zoltraak', { say, mouth: '', nerd: false, aim: 'up', festive: true })
+
+  expect(plain.back).toContain('fill="#c39cf2" opacity="0.9"')
+  expect(plain.back).not.toContain('v-bs')
+  expect(plain.defs).not.toContain('v-bk0')
+  expect(merry.back).not.toContain('fill="#c39cf2" opacity="0.9"')
+  expect(merry.back).toContain('fill="#ff5468" opacity="0.9"')
+  expect(merry.back).toContain('class="v-bs"')
+  expect(sky.back).toContain('class="v-bs"')
+  expect(merry.defs).toContain('id="v-bk0"')
+  expect(merry.css).toContain('.v-bs{')
+  expect(plain.css).not.toContain('.v-bs{')
+})
+
+test('the festive present stands higher than the trophy, and its line with it', () => {
+  const say = (_: string, bottom: number) => `[${_}|${bottom}]`
+  const present = showParts('trophy', { say, mouth: '', nerd: true, festive: true })
+  const trophy = showParts('trophy', { say, mouth: '', nerd: true })
+  const foot = (parts: { front: string }) => Number(/\|(-?\d+)\]/.exec(parts.front)![1])
+
+  expect(foot(present)).toBeLessThan(foot(trophy))
+  expect(present.back).not.toBe(trophy.back)
+})
+
+test('nerd Ina can wake with the all-day greeting, plain or festive', () => {
+  const greeting = 'GOOD MORNING,\nAFTERNOON,\nEVENING!'
+  const woken = (festive: boolean) => TURNS.map(id => draw(wake(ASLEEP, id), undefined, NONE, festive))
+
+  expect(woken(false).some(svg => svg.includes(speechMarkup(greeting)))).toBe(true)
+  // Festive, her bubbles stand higher over the hat.
+  expect(woken(true).some(svg => svg.includes(speechMarkup(greeting, 5)))).toBe(true)
+  expect(missingGlyphs()).toEqual([])
+})
+
 test('festive, every show still fits the limit with every takodachi coming and going', () => {
   const ids = Array.from({ length: 14 }, (_, i) => `agent-${i * 7919}`)
 

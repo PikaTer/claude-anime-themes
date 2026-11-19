@@ -59,6 +59,8 @@ const TROPHY = mirror([
   '....oooooooo',
 ])
 const TRO_AT = [9, -28]
+// Festive, the present stands this much higher: Ina's Santa hat reaches up to meet it.
+const PRESENT_LIFT = 4
 const TROPHY_ART = px(TROPHY, ...TRO_AT) + px(['w', 'w', 'w', 'w'], TRO_AT[0] + 5, TRO_AT[1] + 3) + px(['w'], TRO_AT[0] + 6, TRO_AT[1] + 2)
 // Cat Ina's: gold cat ears on its rim.
 const CUP_EAR = ['o...', 'oo..', 'oJo.', 'ojjo']
@@ -235,8 +237,22 @@ const beam = ([thick, color, opacity]) => ({
   up: `<rect x="${ZC[0] - thick / 2}" y="-900" width="${thick}" height="${900 + ZC[1]}" fill="${color}" opacity="${opacity}"/>`,
 })
 const RAYS = [[18, '#9fd8ff', 0.35], [10, '#c39cf2', 0.9], [4, '#ffffff', 1]].map(beam)
-const BEAM = aim =>
-  `<g class="v-beam${aim === 'up' ? ' v-sky' : ''}"><g class="v-bj">${RAYS.map(ray => ray[aim]).join('')}</g></g>` +
+// Festive, the beam is Christmas green round red round warm white, and sparkles
+// in red, green and gold twinkle along it.
+const RAYS_XMAS = [[18, '#4fd18a', 0.35], [10, '#ff5468', 0.9], [4, '#fff2c4', 1]].map(beam)
+const BEAM_SPARK = ['R', 'S', 'J'].map((color, i) => `<g id="v-bk${i}">${px([`.${color}.`, `${color}w${color}`, `.${color}.`])}</g>`).join('')
+// Along the beam every so far, a little to one side of it and the other.
+const BEAM_SPARKS = aim =>
+  Array.from({ length: 14 }, (_, i) => {
+    const along = 24 + i * 52 + (i % 3) * 9
+    const across = [-9, 7, -3, 10, -8, 3, 9][i % 7]
+    const [x, y] = aim === 'up' ? [ZC[0] + across, ZC[1] - along] : [ZC[0] - along, ZC[1] + across]
+
+    return `<use href="#v-bk${i % 3}" class="v-bs" x="${x - 1}" y="${y - 1}" style="--k:${((i * 0.19) % 0.9).toFixed(2)}s"/>`
+  }).join('')
+const BEAM = (aim, festive = false) =>
+  `<g class="v-beam${aim === 'up' ? ' v-sky' : ''}"><g class="v-bj">${(festive ? RAYS_XMAS : RAYS).map(ray => ray[aim]).join('')}</g></g>` +
+  (festive ? BEAM_SPARKS(aim) : '') +
   `<circle class="v-muz" cx="${ZC[0]}" cy="${ZC[1]}" r="11" fill="#ffffff"/>`
 
 // The takodachis' parts. Sunglasses, over their eyes.
@@ -342,7 +358,7 @@ export function showParts(kind, { say, mouth, nerd, cat = false, aim = 'left', f
   const present = festive && kind === 'trophy'
   const text = present ? XMAS_SHOW[cat ? 'cat' : 'nerd'] : ((cat ? SHOW_SAY_CAT[kind] : undefined) ?? SHOW_SAY[kind])
   // Cat ears on the trophy, and Ao-chan's ears and tail, push her line up a little.
-  const foot = LINE_FOOT[kind] - (cat ? (kind === 'trophy' && !present ? 4 : kind === 'ao' ? 8 : 0) : 0)
+  const foot = LINE_FOOT[kind] - (cat ? (kind === 'trophy' && !present ? 4 : kind === 'ao' ? 8 : 0) : 0) - (present ? PRESENT_LIFT : 0)
   const ribbon = festive ? aoRibbon(BOOK_AT) : ''
   const line = aim === 'up' ? say(text, SKY_LINE.bottom, SKY_LINE.right) : say(text, foot)
   const talk = `<g class="v-mo">${mouth}</g>`
@@ -358,7 +374,7 @@ export function showParts(kind, { say, mouth, nerd, cat = false, aim = 'left', f
         '<radialGradient id="v-gg"><stop offset="0" stop-color="#ffd27f" stop-opacity=".75"/><stop offset="1" stop-color="#f6a440" stop-opacity="0"/></radialGradient>' +
         `<circle class="v-glow" cx="${RAY_C[0]}" cy="${RAY_C[1]}" r="38" fill="url(#v-gg)"/>` +
         `<g class="v-rays"><g class="v-r1">${a}</g><g class="v-r2">${b}</g></g>` +
-        `<g class="v-tro"><g class="v-hov">${present ? presentArt(TRO_AT) : `${TROPHY_ART}${cat ? CUP_EARS : ''}`}</g></g>${SPARKS}${CONFETTI}`,
+        `<g class="v-tro"><g class="v-hov">${present ? presentArt([TRO_AT[0], TRO_AT[1] - PRESENT_LIFT]) : `${TROPHY_ART}${cat ? CUP_EARS : ''}`}</g></g>${SPARKS}${CONFETTI}`,
       front: `<g class="v-say">${line}</g>`,
       face: talk,
       defs: `<g id="v-sg">${SHADES}<g class="v-gl">${SHADES_GLINT}</g></g>`,
@@ -413,11 +429,11 @@ export function showParts(kind, { say, mouth, nerd, cat = false, aim = 'left', f
     over: window('v-fl', '#ffffff'),
     back:
       `${BOLTS}<g class="v-mc"><g class="v-r1">${a}</g><g class="v-r2">${b}</g></g>` +
-      `<circle class="v-core" cx="${ZC[0]}" cy="${ZC[1]}" r="4" fill="#ffffff"/>${CHARGE}${BEAM(aim)}`,
+      `<circle class="v-core" cx="${ZC[0]}" cy="${ZC[1]}" r="4" fill="#ffffff"/>${CHARGE}${BEAM(aim, festive)}`,
     front: `<g class="v-say">${line}</g>`,
     face: talk,
-    defs: `<g id="v-arm">${ARMS_UP}</g><g id="v-br">${BARRIER}</g>`,
-    css: ZOLTRAAK_CSS,
+    defs: `<g id="v-arm">${ARMS_UP}</g><g id="v-br">${BARRIER}</g>${festive ? BEAM_SPARK : ''}`,
+    css: festive ? ZOLTRAAK_CSS + BEAM_SPARK_CSS : ZOLTRAAK_CSS,
   }
 }
 
@@ -531,3 +547,6 @@ const ZOLTRAAK_CSS = `${BASE_CSS}
 @keyframes vgrow{from{transform:scaleY(0)}}
 @keyframes vjitx{50%{transform:scaleX(.75)}}
 `.replaceAll('\n', '')
+
+// The festive beam's sparkles twinkle through the beam's life, each on its own beat.
+const BEAM_SPARK_CSS = `.v-bs{opacity:0;animation:twinkle .9s steps(3) calc(var(--x) + 2.7s + var(--k)) 2}`
