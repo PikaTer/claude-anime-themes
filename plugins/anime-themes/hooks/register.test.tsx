@@ -1271,3 +1271,14 @@ test('a takodachi riding the low tentacle stays in front of its baubles', () => 
   expect(baublesIn(low).length).toBeGreaterThan(0)
   expect(low.lastIndexOf('<use href="#bb')).toBeLessThan(low.indexOf('class="hold"'))
 })
+
+test('a festive scene hangs baubles on its tentacles, and a plain scene draws none', () => {
+  const scene = ['a1', 'a2', 'a3'].reduce(join, { ...wake(ASLEEP, 't'), ina: 'work' as const })
+  const merry = draw(scene, undefined, NONE, true)
+
+  expect(count(merry, '<use href="#bb')).toBeGreaterThanOrEqual(6)
+  expect(count(merry, '<use href="#bb')).toBeLessThanOrEqual(12)
+  expect(draw(scene, undefined, NONE)).not.toContain('#bb')
+  // A tentacle holding a takodachi has fewer, but the takodachi's hat is still there.
+  expect(count(draw(scene, undefined, WRAP, true), '<use href="#bb')).toBeGreaterThan(0)
+})

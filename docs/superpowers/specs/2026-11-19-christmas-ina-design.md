@@ -25,6 +25,8 @@ Christmas. It's for fun, like the other variations.
     while Ina is up, fainter over the conversation. Asleep, the flakes hold still
     like the marks. A redraw restarts them, as it does the marks' blinks.
   - **Summoning circle:** holly sprigs on its ring.
+  - **Tentacles:** baubles hang from Ina's two corner tentacles, whatever they hold (see
+    `2026-11-19-tentacle-baubles-design.md`).
   - **Lines:** festive ones mixed in ("MERRY CHRISTMAS!", "HO HO HO~"), and cat
     Ina's own ("MERRY NYASMAS~").
   - **Gold trophy show:** a wrapped present instead of the trophy, with its own line.

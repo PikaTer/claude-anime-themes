@@ -111,6 +111,10 @@ export async function cases(themeDir, { width, height, insets }) {
   // a hat, each form's wake, and every show.
   const XMAS = { high: 'wrap', low: 'ride' }
   still('xmas-work-t8', at('nerd', true, 8), XMAS, true)
+  // The baubles on the tentacles: bare, wrapped and riding, with the crowd below them.
+  still('xmas-baubles-bare', at('nerd', true, 3), NONE, true)
+  still('xmas-baubles-wrap', at('nerd', true, 3), WRAP, true)
+  still('xmas-baubles-ride', at(cat ? 'cat' : 'nerd', true, 0), { high: 'ride', low: 'ride' }, true)
   for (const form of forms) {
     still(`xmas-wake-${form}`, first(s => s.form === form && s.ao), XMAS, true)
   }
