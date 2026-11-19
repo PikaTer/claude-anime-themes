@@ -3,7 +3,7 @@ import type { Engine } from 'claude-code/testing'
 
 import { lands } from './themes/ina-pixel-dark'
 import { ASLEEP, HOLD, ask, carry, cheer, doze, draw, festiveSession, join, leave, missingGlyphs, rest, resume, speechMarkup, wake } from './themes/ina-pixel-dark/scene.js'
-import { XMAS_CAT, XMAS_SAY, XMAS_SHOW, XMAS_WAKE } from './themes/ina-pixel-dark/xmas.js'
+import { BAUBLE_SIZE, XMAS_CAT, XMAS_SAY, XMAS_SHOW, XMAS_WAKE } from './themes/ina-pixel-dark/xmas.js'
 import { showParts } from './themes/ina-pixel-dark/special.js'
 import { CAT_SAY } from './themes/ina-pixel-dark/cat.js'
 import { rollHold, tentacles } from './themes/ina-pixel-dark/held.js'
@@ -1209,4 +1209,65 @@ test('a festive scene defines four baubles once each, and a plain one none', () 
     expect(plain).not.toContain(`id="${id}"`)
   }
   expect(merry).not.toContain('id="bb4"')
+})
+
+// The baubles a tentacle's markup hangs, as boxes in its own frame.
+const baublesIn = (part: string) => [...part.matchAll(/<use href="#bb(\d)" x="(-?\d+)" y="(-?\d+)"\/>/g)].map(([, color, x, y]) => ({ color: +color, x: +x, y: +y }))
+const [BAUBLE_W, BAUBLE_H] = BAUBLE_SIZE
+type Box = [number, number, number, number]
+const meets = (bauble: { x: number; y: number }, [x0, y0, x1, y1]: Box) =>
+  bauble.x < x1 && bauble.x + BAUBLE_W > x0 && bauble.y < y1 && bauble.y + BAUBLE_H > y0
+// The held takodachi's box: its 24 x 20 where it rides, centred on the loop where it is wrapped.
+const heldBox = (part: string): Box => {
+  const [, x, y] = part.match(/class="hold" transform="translate\((-?\d+) (-?\d+)\)"/)!.map(Number)
+
+  return part.includes('class="hk"') ? [x - 12, y - 11, x + 12, y + 9] : [x, y, x + 24, y + 20]
+}
+
+test('festive bare tentacles hang four or five baubles each, and a plain scene none', () => {
+  const merry = tentacles(NONE, { festive: true })
+
+  expect(baublesIn(merry.low).length).toBeGreaterThanOrEqual(4)
+  expect(baublesIn(merry.low).length).toBeLessThanOrEqual(6)
+  expect(baublesIn(merry.high).length).toBeGreaterThanOrEqual(3)
+  expect(baublesIn(merry.high).length).toBeLessThanOrEqual(5)
+  // All four colours turn up, and a plain scene has none.
+  expect(new Set(baublesIn(merry.low).map(bauble => bauble.color)).size).toBe(4)
+  expect(baublesIn(tentacles(NONE).low + tentacles(NONE).high)).toEqual([])
+})
+
+test('baubles keep apart along a tentacle', () => {
+  for (const part of Object.values(tentacles(NONE, { festive: true }))) {
+    const hung = baublesIn(part)
+
+    hung.forEach((a, i) =>
+      hung.slice(i + 1).forEach(b => expect(meets(b, [a.x, a.y, a.x + BAUBLE_W, a.y + BAUBLE_H])).toBe(false)),
+    )
+  }
+})
+
+test('baubles leave a held takodachi clear, wrapped or riding', () => {
+  for (const hold of [WRAP, { high: 'ride', low: 'ride' }, { high: 'wrap', low: 'ride' }, { high: 'ride', low: 'wrap' }] as const) {
+    const arms = tentacles(hold, { festive: true })
+
+    for (const part of [arms.high, arms.low]) {
+      const box = heldBox(part)
+
+      expect(baublesIn(part).length).toBeGreaterThan(0)
+      for (const bauble of baublesIn(part)) {
+        expect(meets(bauble, box)).toBe(false)
+        // Nor on the loop that circles a wrapped one.
+        if (part.includes('class="hk"')) {
+          expect(Math.hypot(bauble.x + BAUBLE_W / 2 - (box[0] + 12), bauble.y + BAUBLE_H / 2 - (box[1] + 11))).toBeGreaterThan(14)
+        }
+      }
+    }
+  }
+})
+
+test('a takodachi riding the low tentacle stays in front of its baubles', () => {
+  const { low } = tentacles({ high: 'none', low: 'ride' }, { festive: true })
+
+  expect(baublesIn(low).length).toBeGreaterThan(0)
+  expect(low.lastIndexOf('<use href="#bb')).toBeLessThan(low.indexOf('class="hold"'))
 })
