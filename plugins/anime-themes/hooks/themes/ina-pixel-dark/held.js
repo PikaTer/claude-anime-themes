@@ -73,11 +73,12 @@ const ARMS_UP = px(['TT', 'TT', 'oo'], 6, 1) + px(['TT', 'TT', 'oo'], 16, 1)
 
 /**
  * Both tentacles as `hold` has them, in Ina's units from their corners. A held
- * takodachi bobs only while Ina is `awake`, and has cat ears with `ears`.
+ * takodachi bobs only while Ina is `awake`, has cat ears with `ears`, and a
+ * Santa hat when `festive`.
  */
-export function tentacles(hold, { awake = false, ears = false } = {}) {
+export function tentacles(hold, { awake = false, ears = false, festive = false } = {}) {
   const tako = (at, extra = '') => {
-    const body = `<use href="#tako"/>${ears ? '<use href="#cear"/>' : ''}${extra}`
+    const body = `<use href="#tako"/>${ears ? '<use href="#cear"/>' : ''}${festive ? '<use href="#xh"/>' : ''}${extra}`
 
     return `<g class="hold" transform="${at}">${awake ? `<g class="on"><g class="bob">${body}</g></g>` : body}</g>`
   }

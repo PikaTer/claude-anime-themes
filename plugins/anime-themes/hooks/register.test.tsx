@@ -2,7 +2,8 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 
 import { lands } from './themes/ina-pixel-dark'
-import { ASLEEP, HOLD, ask, carry, cheer, doze, draw, join, leave, missingGlyphs, rest, resume, speechMarkup, wake } from './themes/ina-pixel-dark/scene.js'
+import { ASLEEP, HOLD, ask, carry, cheer, doze, draw, festiveSession, join, leave, missingGlyphs, rest, resume, speechMarkup, wake } from './themes/ina-pixel-dark/scene.js'
+import { XMAS_CAT, XMAS_SAY, XMAS_SHOW, XMAS_WAKE } from './themes/ina-pixel-dark/xmas.js'
 import { showParts } from './themes/ina-pixel-dark/special.js'
 import { CAT_SAY } from './themes/ina-pixel-dark/cat.js'
 import { rollHold, tentacles } from './themes/ina-pixel-dark/held.js'
@@ -1028,4 +1029,152 @@ test('a wrapped takodachi keeps whole pixels, on a desktop and on a phone', () =
   expect(Math.round(3 * scale(phone) * 100) / 100).toBe(2)
   expect(count(svg, 'class="hk"')).toBe(2)
   expect(svg).not.toContain('scale(.8)"')
+})
+
+// Christmas Ina. Times in the middle of a month, so no time zone moves them.
+const DEC = Date.UTC(2026, 11, 15)
+const NOV = Date.UTC(2026, 10, 15)
+const OCT = Date.UTC(2026, 9, 15)
+const JAN = Date.UTC(2027, 0, 15)
+const SESSIONS = Array.from({ length: 400 }, (_, i) => `session-${i * 104729}`)
+const MERRY = SESSIONS.find(id => festiveSession(DEC, id)) ?? 'none'
+const PLAIN = SESSIONS.find(id => !festiveSession(DEC, id)) ?? 'none'
+
+test('one session in two is festive, only in November and December, and the same session always rolls the same', () => {
+  const festive = SESSIONS.filter(id => festiveSession(DEC, id)).length
+
+  expect(festive).toBeGreaterThan(160)
+  expect(festive).toBeLessThan(240)
+  for (const id of SESSIONS) {
+    expect(festiveSession(NOV, id)).toBe(festiveSession(DEC, id))
+    expect(festiveSession(OCT, id)).toBe(false)
+    expect(festiveSession(JAN, id)).toBe(false)
+  }
+})
+
+test('a festive scene dresses everyone for Christmas, whichever Ina is out, and a plain one draws none of it', () => {
+  const crowd = (id: string) => {
+    const busy = Array.from({ length: 8 }, (_, i) => `agent-${i}`).reduce(join, wake(ASLEEP, id))
+
+    return { ...busy, ina: 'work' as const, takos: busy.takos.map(tako => ({ ...tako, phase: 'on' as const })) }
+  }
+  const RIDE = { high: 'ride', low: 'ride' } as const
+
+  for (const id of ['t', AO, BOTH, CAT_AO]) {
+    const scene = crowd(id)
+    const merry = draw(scene, undefined, RIDE, true)
+    const plain = draw(scene, undefined, RIDE)
+
+    // Her hat, the holly, the snow and the snowflakes, every takodachi's hat or antlers.
+    expect(merry).toContain('class="xhat"')
+    expect(merry).toContain('class="sn"')
+    expect(merry).toContain('href="#m5"')
+    expect(count(merry, '<use href="#xh"/>') + count(merry, '<use href="#xa"/>')).toBe(takos(merry) + 2)
+    expect(count(merry, '<use href="#xa"/>')).toBeGreaterThan(0)
+    // Ao-chan's ribbon, wherever she is out.
+    expect(merry.includes('class="xr"')).toBe(scene.ao)
+    for (const part of ['class="xhat"', 'class="sn"', '#m5', '#xh', '#xa', 'class="xr"']) {
+      expect(plain).not.toContain(part)
+    }
+    // Christmas costs little: the halos go, for the hats.
+    expect(merry.length).toBeLessThan(plain.length + 10_000)
+  }
+  // Cat Ina's ears go in front of her hat.
+  const cat = draw(crowd(CAT), undefined, NONE, true)
+  expect(cat.indexOf('class="xhat"')).toBeLessThan(cat.indexOf('class="ce"'))
+  // Holly on the round circle.
+  expect(draw(crowd('t'), undefined, NONE, true)).toMatch(/<g class="sigil">(?:(?!<\/g>).)*<use href="#hl"/)
+})
+
+test('festive lines come up, cat Ina has her own, and every one fits a bubble', () => {
+  const said = (id: string) =>
+    TURNS.flatMap(turn => {
+      const svg = draw({ ...wake(ASLEEP, id), ina: 'work', seed: Number(turn.replace(/\D/g, '')) * 2654435761 }, undefined, NONE, true)
+
+      return [...svg.matchAll(/class="say"/g)].length > 0 ? [svg] : []
+    })
+  const has = (svgs: string[], line: string) => svgs.some(svg => svg.includes(speechMarkup(line, 5)))
+
+  expect(XMAS_SAY.some(line => has(said('t'), line))).toBe(true)
+  expect(XMAS_CAT.some(line => has(said(CAT), line))).toBe(true)
+  expect(XMAS_SAY.some(line => has(said(CAT), line))).toBe(false)
+  expect(missingGlyphs()).toEqual([])
+  for (const line of [...XMAS_SAY, ...XMAS_CAT, ...XMAS_WAKE, ...Object.values(XMAS_SHOW)]) {
+    for (const row of line.split('\n')) {
+      expect(row.length).toBeLessThanOrEqual('WHAT IN THE WORLD'.length)
+    }
+  }
+  // Her bubbles stand clear of the hat.
+  expect(speechMarkup('HI', 5)).not.toBe(speechMarkup('HI'))
+})
+
+test('a festive gold trophy show is a present, with its own line', () => {
+  const nerd = TURNS.map(id => cheer(wake(ASLEEP, 't'), id, T)).find(scene => scene.special?.kind === 'trophy')
+  const cat = TURNS.map(id => cheer(wake(ASLEEP, CAT), id, T)).find(scene => scene.special?.kind === 'trophy')
+
+  expect(draw(nerd!, undefined, NONE, true)).toContain('class="v-tro"')
+  const say = (_: string, bottom: number) => `[${_}|${bottom}]`
+  expect(showParts('trophy', { say, mouth: '', nerd: true, festive: true }).front).toContain(XMAS_SHOW.nerd)
+  expect(showParts('trophy', { say, mouth: '', nerd: false, cat: true, festive: true }).front).toContain(XMAS_SHOW.cat)
+  expect(showParts('trophy', { say, mouth: '', nerd: true }).front).not.toContain('PRESENT')
+  expect(draw(cat!, undefined, NONE, true)).toContain('class="v-tro"')
+})
+
+test('festive, every show still fits the limit with every takodachi coming and going', () => {
+  const ids = Array.from({ length: 14 }, (_, i) => `agent-${i * 7919}`)
+
+  for (const id of ['t', AO, BOTH, CAT, CAT_AO]) {
+    const busy = ids.reduce(join, wake(ASLEEP, id))
+    const shown = cheer(busy, 'x', T)
+    const going = after(shown, now => ids.reduce(leave, now), T + 500)
+    const parting = after(going, now => doze(now, 'd', 'ask'), T + 1000)
+    const svg = draw({ ...parting, takos: [...busy.takos.map(tako => ({ ...tako, phase: 'in' as const })), ...going.takos] }, undefined, WRAP, true)
+
+    expect(svg).toMatch(SHOWN)
+    expect(svg).toContain('class="xhat"')
+    expect(svg.length).toBeLessThan(131072 - 500)
+  }
+})
+
+test('a session starts festive or plain by its id and the month, and stays so through a reload', async ($, on) => {
+  mock.store(on)
+  mock.clock(on, { now: DEC })
+  let session = MERRY
+  on('session.id', () => ({ value: session }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('theme.set', () => ({ value: { isDrawn: true, requestId: 'backdrop' } }))
+  on('command.register', (_, e) => ({ value: { command: e.name } }))
+
+  const source = async () => {
+    const ui = await $.ui.mount(BACKDROP)
+    const svg = await ui.find({ type: 'Svg' })
+    const alt = String(svg?.props.alt)
+    await ui.unmount()
+
+    return { svg: String(svg?.props.source), alt }
+  }
+  const start = () => $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+
+  await start()
+  expect((await source()).svg).toContain('class="xhat"')
+  expect((await source()).alt).toContain('Santa hat')
+  await start()
+  expect((await source()).svg).toContain('class="xhat"')
+  session = PLAIN
+  await start()
+  expect((await source()).svg).not.toContain('class="xhat"')
+  expect((await source()).alt).not.toContain('Santa hat')
+})
+
+test('a session whose time or id cannot be read is plain', async ($, on) => {
+  mock.store(on)
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('theme.set', () => ({ value: { isDrawn: true, requestId: 'backdrop' } }))
+  on('command.register', (_, e) => ({ value: { command: e.name } }))
+
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  const ui = await $.ui.mount(BACKDROP)
+  const svg = await ui.find({ type: 'Svg' })
+  await ui.unmount()
+  expect(String(svg?.props.source)).not.toContain('class="xhat"')
 })

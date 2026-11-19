@@ -10,12 +10,13 @@ export async function cases(themeDir, { width, height, insets }) {
   const S = await import(`${pathToFileURL(`${themeDir}/scene.js`).href}?${Date.now()}`)
   const { ASLEEP, carry, cheer, doze, draw, join, leave, wake } = S
   // `hold` is what the corner tentacles hold, nothing unless a case says, so a
-  // case plays the same each run; an older theme's `draw` ignores it.
+  // case plays the same each run; `festive` dresses it for Christmas. An older
+  // theme's `draw` ignores both.
   const NONE = { high: 'none', low: 'none' }
-  const sized = (scene, hold = NONE) => draw(scene, insets, hold).replace('width="100%" height="100%"', `width="${width}" height="${height}"`)
+  const sized = (scene, hold = NONE, festive = false) => draw(scene, insets, hold, festive).replace('width="100%" height="100%"', `width="${width}" height="${height}"`)
   const out = {}
 
-  const still = (name, scene, hold) => (out[name] = [{ t: 0, svg: sized(scene, hold) }])
+  const still = (name, scene, hold, festive) => (out[name] = [{ t: 0, svg: sized(scene, hold, festive) }])
   // Each change is made `ms` in and carried on from what was playing, as the app does.
   const changes = (name, start, steps) => {
     let scene = start
@@ -106,6 +107,16 @@ export async function cases(themeDir, { width, height, insets }) {
   // Zoltraak at the sky, its beam through the high one; Ao-chan's show beside them.
   still('held-wrap-zoltraak', show(at('frieren', false, 0), 'zoltraak'), WRAP)
   still('held-ride-ao', show(at('nerd', false, 0), 'ao'), { high: 'ride', low: 'ride' })
+  // Christmas: the snow falling over a crowd in hats and antlers, a held one in
+  // a hat, each form's wake, and every show.
+  const XMAS = { high: 'wrap', low: 'ride' }
+  still('xmas-work-t8', at('nerd', true, 8), XMAS, true)
+  for (const form of forms) {
+    still(`xmas-wake-${form}`, first(s => s.form === form && s.ao), XMAS, true)
+  }
+  for (const [kind, form] of [['trophy', 'nerd'], ['ao', 'nerd'], ['zoltraak', 'frieren'], ...(cat ? [['trophy', 'cat'], ['ao', 'cat']] : [])]) {
+    still(`xmas-${kind}${form === 'cat' ? '-cat' : ''}-t3`, show(at(form, false, 3), kind), XMAS, true)
+  }
   // Redrawn mid-show: a takodachi joins, another leaves, the turn ends.
   for (const [kind, form] of [['trophy', 'nerd'], ['ao', 'nerd'], ['zoltraak', 'frieren'], ...(cat ? [['trophy', 'cat'], ['ao', 'cat']] : [])]) {
     changes(`${kind}${form === 'cat' ? '-cat' : ''}-redrawn`, show(at(form, false, 2), kind), [

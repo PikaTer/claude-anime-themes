@@ -4,7 +4,7 @@ import type { EngineInterface, Register, ThemeSetArgs } from 'claude-code'
 import type { Ending, Insets, Scene } from '../../../types'
 import { makeColors } from '../../make-colors.js'
 import type { Theme } from '../theme.js'
-import { ASLEEP, ask, carry, cheer, doze, draw, join, leave, rest, resume, showEnds, wake } from './scene.js'
+import { ASLEEP, HOLD, ask, carry, cheer, doze, draw, festiveSession, join, leave, rest, resume, showEnds, wake } from './scene.js'
 
 const PLUGIN = 'anime-themes'
 const SCENE = 'ina'
@@ -37,6 +37,8 @@ const LOOK: ThemeSetArgs = {
 }
 
 const scene = atom({ plugin: 'anime-themes', key: 'ina-scene' } as const, ASLEEP, { shape: 'scene-7' })
+// Christmas Ina: in November and December, one session in two, rolled as it starts.
+const xmas = atom({ plugin: 'anime-themes', key: 'ina-xmas' } as const, false)
 
 // The desktop app draws its sidebar and its right-hand panel over the backdrop:
 // the takodachis and Ina stand this far in, past them. `/ina-insets` changes it.
@@ -102,6 +104,13 @@ const USAGE = 'Usage: /ina-insets <left> <right>, in pixels from the window edge
 export async function startIna($: EngineInterface) {
   // A reload or a resumed session meets what ran before it: that is over.
   await update($, scene, () => ASLEEP)
+  // Rolled on the session's id, so a reload of the same session rolls the same
+  // way. Where the time or the id can't be read, it is not festive.
+  const festive = await Promise.all([$.clock.now(), $.session.id()]).then(
+    ([ms, id]) => festiveSession(ms, id),
+    () => false,
+  )
+  await update($, xmas, () => festive)
   await $.command.register({
     name: 'ina-insets',
     description: 'Move Ina and the takodachis clear of the side panels',
@@ -180,6 +189,7 @@ export const registerIna: Register = on => {
     const now = await read($, scene)
     // A phone has no side panels.
     const edges = e.surface === 'mobile' ? undefined : await read($, insets)
+    const festive = await read($, xmas)
     const busy = now.takos.filter(tako => tako.phase !== 'out').length
     const awake = now.ina !== 'sleep' && now.ina !== 'doze'
     const shows = { trophy: 'raising a gold trophy', ao: 'with Ao-chan rising over her in a dark aura', zoltraak: 'casting Zoltraak' }
@@ -187,8 +197,8 @@ export const registerIna: Register = on => {
 
     return (
       <Svg
-        source={draw(now, edges)}
-        alt={`A pixel Ina, ${!awake ? 'asleep' : now.ina === 'wait' ? 'waiting for an answer' : now.form === 'frieren' ? 'summoned as Frieren, elf ears and all' : now.form === 'cat' ? "transformed into Ninyomanyo Ninya'nis, cat ears and all" : 'working in nerd glasses'}${awake && now.ao ? ', with Ao-chan the grimoire' : ''}${showing}${busy > 0 ? `, and ${busy} takodachi at work` : ''}`}
+        source={draw(now, edges, HOLD, festive)}
+        alt={`A pixel Ina, ${!awake ? 'asleep' : now.ina === 'wait' ? 'waiting for an answer' : now.form === 'frieren' ? 'summoned as Frieren, elf ears and all' : now.form === 'cat' ? "transformed into Ninyomanyo Ninya'nis, cat ears and all" : 'working in nerd glasses'}${festive ? ', in a Santa hat' : ''}${awake && now.ao ? ', with Ao-chan the grimoire' : ''}${showing}${busy > 0 ? `, and ${busy} takodachi at work` : ''}`}
       />
     )
   })
@@ -198,7 +208,7 @@ export const ina: Theme = {
   id: 'ina-pixel-dark',
   aliases: ['ina'],
   label: 'Ina pixel dark',
-  blurb: 'Purple on black, with a pixel Ina who naps while idle, works in nerd glasses (or now and then is summoned as Frieren, or turns into cat Ina), now and then with Ao-chan, her grimoire, and a takodachi for every subagent. A commit, deploy or merge gets a show',
+  blurb: 'Purple on black, with a pixel Ina who naps while idle, works in nerd glasses (or now and then is summoned as Frieren, or turns into cat Ina), now and then with Ao-chan, her grimoire, and a takodachi for every subagent. A commit, deploy or merge gets a show. In November and December, one session in two is Christmas',
   swatch: ['#07050c', '#191327', '#9b7fe0', '#d48bd8', '#f6a440', '#ece6fa'],
   look: LOOK,
   warning: problems.find(line => line.startsWith("Desktop won't paint")),

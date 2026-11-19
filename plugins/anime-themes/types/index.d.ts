@@ -63,6 +63,6 @@ export type Choice = { kept: string; trying: string | null }
 
 declare module 'claude-code' {
   interface PluginState {
-    'anime-themes': { 'ina-scene': Shaped<Scene>; 'ina-insets': Insets; choice: Choice }
+    'anime-themes': { 'ina-scene': Shaped<Scene>; 'ina-insets': Insets; 'ina-xmas': boolean; choice: Choice }
   }
 }

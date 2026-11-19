@@ -6,9 +6,13 @@ export type { Grip, Hold } from './held.js'
 /**
  * The whole backdrop for a scene state, as SVG markup. Asleep or waiting, Ina
  * does not move. `insets` keep the sprites clear of the app's side panels;
- * `hold` is what the corner tentacles hold, `HOLD` unless given.
+ * `hold` is what the corner tentacles hold, `HOLD` unless given; `festive`
+ * dresses it for Christmas.
  */
-export function draw(scene: Scene, insets?: Insets, hold?: Hold): string
+export function draw(scene: Scene, insets?: Insets, hold?: Hold, festive?: boolean): string
+
+/** Whether a session started at `ms` (epoch milliseconds), with this id, is festive: November or December, and one id in two. */
+export function festiveSession(ms: number, id: string): boolean
 
 /** What the corner tentacles hold, rolled once as the theme loads. */
 export const HOLD: Hold
@@ -41,4 +45,4 @@ export function leave(scene: Scene, id: string): Scene
 /** Characters of Ina's lines the pixel font cannot draw: empty when every line can be drawn. */
 export function missingGlyphs(): string[]
 /** The markup of one of Ina's speech bubbles, as `draw` places it. */
-export function speechMarkup(text: string): string
+export function speechMarkup(text: string, lift?: number): string

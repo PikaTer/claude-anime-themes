@@ -47,6 +47,10 @@ export const PAL = {
   f: '#45193f', // heart circle
   F: '#7a2f60', // heart circle light
   E: '#ff8ac4', // heart pink, love
+  W: '#9e2338', // Santa red, shaded
+  Z: '#d6d0e6', // fur, shaded
+  D: '#1f6b3c', // holly
+  S: '#43a35e', // holly light
 }
 
 /** Rows of pixels to one `<path>` per color, each run of a row one rectangle. */

@@ -8,6 +8,6 @@ export function rollHold(random?: () => number): Hold
 
 /**
  * Both tentacles as `hold` has them, as markup in Ina's units from their corners.
- * A held takodachi bobs only while Ina is `awake`, and has cat ears with `ears`.
+ * A held takodachi bobs only while Ina is `awake`, has cat ears with `ears`, and a Santa hat when `festive`.
  */
-export function tentacles(hold: Hold, how?: { awake?: boolean; ears?: boolean }): { high: string; low: string }
+export function tentacles(hold: Hold, how?: { awake?: boolean; ears?: boolean; festive?: boolean }): { high: string; low: string }

@@ -8,6 +8,7 @@
 import { AO_AT, AO_CLOSED, AO_OPEN } from './ao.js'
 import { aoCat } from './cat.js'
 import { grid, line, mirror, plot, px, round, rows } from './pixels.js'
+import { XMAS_SHOW, aoRibbon, presentArt } from './xmas.js'
 
 /** How long a show lasts, in seconds. */
 export const SHOW = 7
@@ -335,11 +336,14 @@ const SKY_LINE = { bottom: ZC[1] + 4, right: ZC[0] - 18 }
  * each across the whole window; `back` of Ina's head and `front` of it; `face`
  * on it, moving with her; `defs` for the takodachis; and its `css`. `say`
  * draws a line in a bubble with its foot at a height, `mouth` is her mouth open.
+ * Festive, the trophy is a present, and Ao-chan wears her ribbon.
  */
-export function showParts(kind, { say, mouth, nerd, cat = false, aim = 'left' }) {
-  const text = (cat ? SHOW_SAY_CAT[kind] : undefined) ?? SHOW_SAY[kind]
+export function showParts(kind, { say, mouth, nerd, cat = false, aim = 'left', festive = false }) {
+  const present = festive && kind === 'trophy'
+  const text = present ? XMAS_SHOW[cat ? 'cat' : 'nerd'] : ((cat ? SHOW_SAY_CAT[kind] : undefined) ?? SHOW_SAY[kind])
   // Cat ears on the trophy, and Ao-chan's ears and tail, push her line up a little.
-  const foot = LINE_FOOT[kind] - (cat ? (kind === 'trophy' ? 4 : kind === 'ao' ? 8 : 0) : 0)
+  const foot = LINE_FOOT[kind] - (cat ? (kind === 'trophy' && !present ? 4 : kind === 'ao' ? 8 : 0) : 0)
+  const ribbon = festive ? aoRibbon(BOOK_AT) : ''
   const line = aim === 'up' ? say(text, SKY_LINE.bottom, SKY_LINE.right) : say(text, foot)
   const talk = `<g class="v-mo">${mouth}</g>`
   const window = (cls, fill) => `<rect class="${cls}" width="100%" height="100%" fill="${fill}"/>`
@@ -354,7 +358,7 @@ export function showParts(kind, { say, mouth, nerd, cat = false, aim = 'left' })
         '<radialGradient id="v-gg"><stop offset="0" stop-color="#ffd27f" stop-opacity=".75"/><stop offset="1" stop-color="#f6a440" stop-opacity="0"/></radialGradient>' +
         `<circle class="v-glow" cx="${RAY_C[0]}" cy="${RAY_C[1]}" r="38" fill="url(#v-gg)"/>` +
         `<g class="v-rays"><g class="v-r1">${a}</g><g class="v-r2">${b}</g></g>` +
-        `<g class="v-tro"><g class="v-hov">${TROPHY_ART}${cat ? CUP_EARS : ''}</g></g>${SPARKS}${CONFETTI}`,
+        `<g class="v-tro"><g class="v-hov">${present ? presentArt(TRO_AT) : `${TROPHY_ART}${cat ? CUP_EARS : ''}`}</g></g>${SPARKS}${CONFETTI}`,
       front: `<g class="v-say">${line}</g>`,
       face: talk,
       defs: `<g id="v-sg">${SHADES}<g class="v-gl">${SHADES_GLINT}</g></g>`,
@@ -373,7 +377,7 @@ export function showParts(kind, { say, mouth, nerd, cat = false, aim = 'left' })
         `<g class="v-fly"><g class="v-hov">` +
         `<circle class="v-glow" cx="${BOOK_C[0]}" cy="${BOOK_C[1]}" r="44" fill="url(#v-lg)"/>` +
         `<g class="v-love"><g class="v-r1">${a}</g><g class="v-r2">${b}</g></g>` +
-        `<g class="v-aoc">${px(AO_CLOSED, ...BOOK_AT)}</g>` +
+        `<g class="v-aoc">${px(AO_CLOSED, ...BOOK_AT)}${ribbon}</g>` +
         `<g class="v-aoo">${px(AO_OPEN, ...BOOK_AT)}<circle class="v-eye" cx="${PAGE_EYE[0]}" cy="${PAGE_EYE[1]}" r="3" fill="#ff8ac4"/></g>` +
         `${aoCat(BOOK_AT)}</g></g>${RISING}`,
       front: `<g class="v-say">${line}</g>`,
@@ -393,7 +397,7 @@ export function showParts(kind, { say, mouth, nerd, cat = false, aim = 'left' })
         `<g class="v-fly"><g class="v-hov">` +
         `<circle class="v-glow" cx="${BOOK_C[0]}" cy="${BOOK_C[1]}" r="44" fill="url(#v-ag)"/>` +
         `<g class="v-aura"><g class="v-r1">${a}</g><g class="v-r2">${b}</g></g>` +
-        `<g class="v-aoc">${px(AO_CLOSED, ...BOOK_AT)}</g>` +
+        `<g class="v-aoc">${px(AO_CLOSED, ...BOOK_AT)}${ribbon}</g>` +
         `<g class="v-aoo">${px(AO_OPEN, ...BOOK_AT)}<circle class="v-eye" cx="${PAGE_EYE[0]}" cy="${PAGE_EYE[1]}" r="3" fill="#ff2a5a"/></g>` +
         `</g></g>`,
       front: `<g class="v-say">${line}</g>`,

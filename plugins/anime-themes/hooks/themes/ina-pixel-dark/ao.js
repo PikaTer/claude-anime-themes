@@ -6,6 +6,7 @@
 
 import { px } from './pixels.js'
 import { aoCat } from './cat.js'
+import { aoRibbon } from './xmas.js'
 
 /** What Ina says as Ao-chan comes, as Frieren Ina says it, and as she goes. */
 export const AO_HI = 'AO-CHAN!!'
@@ -104,9 +105,9 @@ export const AO_SPARKS = `<g class="asp">${[
  * Ao-chan's whole group for a scene: rising out of the mark on a wake, at rest
  * through the turn, sinking back as Ina dozes, and gone while she sleeps. On
  * each of Ina's WAHs she flips open a beat later; `plays` is the scene's own
- * timing for a line, `ink` its puff of ink.
+ * timing for a line, `ink` its puff of ink. Festive, she is wrapped in a ribbon.
  */
-export function aoChan(scene, wahs, { plays, ink }) {
+export function aoChan(scene, wahs, { plays, ink, festive = false }) {
   if (!scene.ao || scene.ina === 'sleep') {
     return ''
   }
@@ -119,7 +120,7 @@ export function aoChan(scene, wahs, { plays, ink }) {
   return (
     `<g class="ao">` +
     (phase === 'ao-in' ? `${GLOW}${MOTES}` : '') +
-    `<g class="${phase}"><g class="ab">${px(AO_CLOSED, ...AT)}${scene.form === 'cat' ? aoCat(AT) : ''}` +
+    `<g class="${phase}"><g class="ab">${px(AO_CLOSED, ...AT)}${festive ? aoRibbon(AT) : ''}${scene.form === 'cat' ? aoCat(AT) : ''}` +
     `<g class="agl">${LOOK_L}</g><g class="agr">${LOOK_R}</g><g class="ak">${BLINK}</g>${flips}</g></g>` +
     (phase === 'ao-out' ? `<g class="ai" transform="translate(${AT[0] - 1} ${AT[1] + 4})">${ink}</g>` : '') +
     `</g>`

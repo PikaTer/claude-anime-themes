@@ -6,6 +6,7 @@ import { COVER, FAREWELL, FR_SAY, FR_WAKE, GLINT, KANA, STAFF, frierenBack, frie
 import { AO_BYE, AO_CSS, AO_DEFS, AO_GET, AO_HI, AO_SAY, AO_SPARKS, aoChan } from './ao.js'
 import { FIRE, SHOW, SHOW_SAY, SHOW_SAY_CAT, showParts, takoShow } from './special.js'
 import { CAT_AO, CAT_BYE, CAT_CSS, CAT_HEAD, CAT_SAY, CAT_SPARKS, CAT_WAKE, HEART, TAKO_EARS, nyan } from './cat.js'
+import { HALO_ROWS, SANTA_HAT, SIGIL_HOLLY, SNOW, SNOWFLAKE, XMAS_CAT, XMAS_CSS, XMAS_DEFS, XMAS_LIFT, XMAS_SAY, XMAS_SHOW, XMAS_WAKE, festiveAt } from './xmas.js'
 
 // Ina's head, left half: 42 x 32 once mirrored, down to where her hair hangs
 // free of her cheeks. Its ends are one of HAIR's.
@@ -163,11 +164,11 @@ function bubble(text, fromRight) {
   ]
 }
 
-/** Ina's bubble: above her head, its right edge kept inside the window. */
-function speech(text) {
+/** Ina's bubble: above her head (and `lift` more, over a hat), its right edge kept inside the window. */
+function speech(text, lift = 0) {
   const rows = bubble(text, 17)
 
-  return px(rows, 44 - rows[1].length, -1 - rows.length)
+  return px(rows, 44 - rows[1].length, -1 - lift - rows.length)
 }
 export const speechMarkup = speech
 
@@ -212,7 +213,7 @@ function two(pool, seed) {
  * What Ina says in a scene: `once` at a moment (for `dur` seconds), on a
  * `loop`, or to `stay` (from `at`, when that is later than the start).
  */
-function lines({ ina, cue, seed, form, ao }) {
+function lines({ ina, cue, seed, form, ao }, festive = false) {
   const pick = pool => pool[seed % pool.length]
   const once = (pool, at) => ({ text: pick(pool), at, kind: 'once' })
   const stay = (pool, at = 0.1) => ({ text: pick(pool), at, kind: 'stay' })
@@ -244,7 +245,7 @@ function lines({ ina, cue, seed, form, ao }) {
       ? [{ text: CAT_WAKE, at: 0.4, kind: 'once', dur: 1 }, ...(ao ? [{ text: CAT_AO, at: 2, kind: 'once', dur: 1.8 }] : [])]
       : ao
       ? [{ text: AO_HI, at: 0.6, kind: 'once' }]
-      : [once(SAY.wake, 0.6)]
+      : [once(festive ? [...SAY.wake, ...XMAS_WAKE] : SAY.wake, 0.6)]
   const first = ina === 'wake' ? woken : SAY[cue] ? [once(SAY[cue], 0.2)] : []
   // Cat Ina has her own NYA-T IS THIS?: the shared one would come out the same.
   const usual = two(cat ? SAY.work.filter(line => line !== 'WAH-T IS THIS?') : SAY.work, seed)
@@ -254,7 +255,10 @@ function lines({ ina, cue, seed, form, ao }) {
   const theirs =
     frieren || cat ? usual.map((line, i) => ((seed >>> (20 + 4 * i)) % 3 < 2 ? own[i] : speak(line))) : usual
   // With Ao-chan out, the second line is for her half the time.
-  const said = ao && (seed >>> 28) % 2 === 0 ? [theirs[0], speak(AO_SAY[(seed >>> 16) % AO_SAY.length])] : theirs
+  const withAo = ao && (seed >>> 28) % 2 === 0 ? [theirs[0], speak(AO_SAY[(seed >>> 16) % AO_SAY.length])] : theirs
+  // Festive, the first is a Christmas line half the time: cat Ina's own, or everyone's.
+  const merry = cat ? XMAS_CAT[(seed >>> 5) % XMAS_CAT.length] : XMAS_SAY[(seed >>> 5) % XMAS_SAY.length]
+  const said = festive && (seed >>> 3) % 2 === 0 ? [merry, withAo[1]] : withAo
 
   return [
     ...(cat ? first.map(slot => (slot.text === CAT_WAKE || slot.text === CAT_AO ? slot : { ...slot, text: nyan(slot.text) })) : first),
@@ -267,7 +271,7 @@ function lines({ ina, cue, seed, form, ao }) {
 /** Characters of Ina's lines the pixel font cannot draw: empty when every line can be drawn. */
 export function missingGlyphs() {
   const shared = [...Object.values(SAY).flat(), ...AO_SAY, 'WAH!']
-  const all = [...shared, ...shared.map(nyan), ...FR_SAY, FR_WAKE, FAREWELL, AO_HI, AO_GET, AO_BYE, ...CAT_SAY, CAT_WAKE, CAT_AO, CAT_BYE, ...Object.values(SHOW_SAY), ...Object.values(SHOW_SAY_CAT)]
+  const all = [...shared, ...shared.map(nyan), ...XMAS_SAY, ...XMAS_CAT, ...XMAS_WAKE, ...Object.values(XMAS_SHOW), ...FR_SAY, FR_WAKE, FAREWELL, AO_HI, AO_GET, AO_BYE, ...CAT_SAY, CAT_WAKE, CAT_AO, CAT_BYE, ...Object.values(SHOW_SAY), ...Object.values(SHOW_SAY_CAT)]
 
   return [...new Set(all.join('').replace(/[\n{}]/g, ''))].filter(char => FONT[char] === undefined)
 }
@@ -363,13 +367,15 @@ const MARKS = [
 const MARK_DEFS = MARKS.map(
   (mark, i) => `<g id="m${i}"><g transform="scale(2)">${px(mark)}</g></g><g id="M${i}"><g transform="scale(3)">${px(mark)}</g></g>`,
 ).join('')
+// The snowflake, as each mark: drawn only in a festive scene.
+const FLAKE_DEFS = `<g id="m5"><g transform="scale(2)">${px(SNOWFLAKE)}</g></g><g id="M5"><use href="#m5" transform="scale(1.5)"/></g>`
 // A new sky each time the theme loads, then the same one at every redraw, so
 // the marks hold still as the scene changes. Awake, each comes and goes on a
-// clock of its own.
-const STARS = (() => {
+// clock of its own. In a festive scene every other one is a snowflake.
+const SKY = (() => {
   const COLUMNS = 7
   const ROWS = 6
-  let stars = ''
+  const stars = []
 
   // One mark at most to a cell of a loose grid: random, but never in a heap.
   for (let i = 0; i < COLUMNS * ROWS; i++) {
@@ -384,13 +390,17 @@ const STARS = (() => {
     const opacity = x > 24 && x < 72 ? 0.14 : 0.3 + Math.random() * 0.35
     const period = 4 + Math.random() * 7
 
-    stars +=
-      `<use href="#${size}${kind}" x="${x.toFixed(1)}%" y="${y.toFixed(1)}%" opacity="${opacity.toFixed(2)}" class="mk" ` +
+    const rest =
+      `" x="${x.toFixed(1)}%" y="${y.toFixed(1)}%" opacity="${opacity.toFixed(2)}" class="mk" ` +
       `style="--o:${opacity.toFixed(2)};--p:${period.toFixed(1)}s;--t:-${(Math.random() * period).toFixed(1)}s"/>`
+
+    stars.push({ plain: `<use href="#${size}${kind}${rest}`, flake: `<use href="#${size}${stars.length % 2 === 0 ? 5 : kind}${rest}` })
   }
 
   return stars
 })()
+const STARS = SKY.map(star => star.plain).join('')
+const FLAKES = SKY.map(star => star.flake).join('')
 
 // What the corner tentacles hold, rolled once as the theme loads: like the
 // marks, it holds till the theme is loaded again.
@@ -407,10 +417,11 @@ const plays = (slot, delay, loop, once) =>
 /** A line that stays: up at once, or hidden until its moment. */
 const stays = slot => (slot.at > 1 ? `opacity:1;animation:off ${slot.at}s` : 'opacity:1')
 
-function ina(scene, said, wahs, parts, hold) {
+function ina(scene, said, wahs, parts, hold, festive) {
   const frieren = scene.form === 'frieren'
+  const lift = festive ? XMAS_LIFT : 0
   const bubbles = said
-    .map(slot => `<g class="say" style="${plays(slot, slot.at, 'say', `on ${slot.dur ?? 2.4}s`) || stays(slot)}">${speech(slot.text)}</g>`)
+    .map(slot => `<g class="say" style="${plays(slot, slot.at, 'say', `on ${slot.dur ?? 2.4}s`) || stays(slot)}">${speech(slot.text, lift)}</g>`)
     .join('')
   // Her mouth moves with each line; a standing line is spoken once, as she dozes.
   const mouths = said
@@ -423,28 +434,33 @@ function ina(scene, said, wahs, parts, hold) {
   const summoning =
     frieren && scene.ina === 'wake' ? summonFx(0, true) : frieren && scene.ina === 'doze' ? summonFx(2.4 + hold, false) : ''
   // Cat Ina is regular Ina, no glasses, with her ears and faces over her.
+  // Festive, a Santa hat over whichever head: cat Ina's ears in front of it.
   const cat = scene.form === 'cat'
+  const hat = festive ? SANTA_HAT : ''
   const heads = frieren
-    ? `<g class="nh">${headArt(scene.hair)}</g><g class="fh">${frierenBack()}${AHOGE}${headOf(scene.hair)}${frierenFront(scene.face)}</g>`
+    ? `<g class="nh">${headArt(scene.hair)}</g><g class="fh">${frierenBack()}${AHOGE}${headOf(scene.hair)}${frierenFront(scene.face)}</g>${hat}`
     : cat
-      ? `<g class="nh">${headArt(scene.hair)}</g>${CAT_HEAD}`
-      : `<g class="nh">${headArt(scene.hair)}${GLASSES}</g>`
+      ? `<g class="nh">${headArt(scene.hair)}</g>${hat}${CAT_HEAD}`
+      : `<g class="nh">${headArt(scene.hair)}${GLASSES}</g>${hat}`
   // Her heart circle while she is out; the round one only as it turns into it and back.
   const turning = scene.ina === 'wake' || scene.ina === 'doze'
-  const circle = cat ? `${turning ? `<g class="sigil">${SIGIL}</g>` : ''}<g class="heart">${HEART}</g>` : `<g class="sigil">${SIGIL}</g>`
+  // Festive, holly on the round one.
+  const sigil = `<g class="sigil">${SIGIL}${festive ? SIGIL_HOLLY : ''}</g>`
+  const circle = cat ? `${turning ? sigil : ''}<g class="heart">${HEART}</g>` : sigil
 
   const head = `<g class="head">${heads}${mouths}${parts?.face ?? ''}</g>`
 
   return (
-    `${circle}${summoning}${cat && turning ? CAT_SPARKS : ''}${aoChan(scene, wahs, { plays, ink: INK })}${parts?.back ?? ''}<g class="zzz">${ZZZ}</g>` +
+    `${circle}${summoning}${cat && turning ? CAT_SPARKS : ''}${aoChan(scene, wahs, { plays, ink: INK, festive })}${parts?.back ?? ''}<g class="zzz">${ZZZ}</g>` +
     // Her greeting's sparkles, under the bubbles.
     `${scene.ao && scene.ina === 'wake' ? AO_SPARKS : ''}${bubbles}${parts?.front ?? ''}` +
     `${parts ? `<g class="v-hd">${head}</g>` : head}${frieren && scene.ina === 'doze' ? COVER : ''}`
   )
 }
 
-// A takodachi, left half: 24 x 20 once mirrored, its halo first.
-const TAKO =
+// A takodachi, left half: 24 x 20 once mirrored, its halo first. In a festive
+// scene it goes without: a hat or antlers take its place.
+const takoArt = halo =>
   px(
     mirror([
       '.......yyyyy',
@@ -467,11 +483,13 @@ const TAKO =
       '...otttttttt',
       '...ottottott',
       '....oo.oo.oo',
-    ]),
+    ].map((row, y) => (halo || y >= HALO_ROWS ? row : '.'.repeat(row.length)))),
   ) +
   both(['eeee'], 6, 11, 24) +
   px(['e.ee.e', '.e..e.'], 9, 12) +
   both(['yy'], 5, 13, 24)
+const TAKO = takoArt(true)
+const TAKO_XMAS = takoArt(false)
 
 const ARM = ['oo', 'TT', 'TT']
 const LAPTOP =
@@ -547,11 +565,17 @@ const WAH_ECHO = echo('WAH!')
 // Cat Ina's takodachis answer her NYAHs: drawn only while she is out.
 const NYAH_ECHO = `<g id="nyah">${echo('NYAH!')}</g>`
 
-const DEFS =
-  `<g id="staff">${STAFF}</g><g id="tako">${TAKO}</g><g id="ring">${RING}</g><g id="grab">${GRAB}</g><g id="wah">${WAH_ECHO}</g>${AO_DEFS}${MARK_DEFS}`
+// What every takodachi carries, drawn once: its laptop or cookie, and the glint on Fern's staff.
+const DEFS_REST = `<g id="lap">${LAPTOP}</g><g id="ck">${COOKIE}</g><g id="gl">${GLINT}</g><g id="ring">${RING}</g><g id="grab">${GRAB}</g><g id="wah">${WAH_ECHO}</g>${AO_DEFS}${MARK_DEFS}`
+const DEFS = `<g id="staff">${STAFF}</g><g id="tako">${TAKO}</g>${DEFS_REST}`
+// Festive: takodachis without halos, their hats and antlers, and the snowflake mark.
+const DEFS_XMAS = `<g id="staff">${STAFF}</g><g id="tako">${TAKO_XMAS}</g>${DEFS_REST}${XMAS_DEFS}${FLAKE_DEFS}`
 
 const ENTER = ['circle', 'tentacle', 'pop', 'fall', 'ink']
 const EXIT = ['circle', 'tentacle', 'ascend', 'ink', 'sink']
+
+/** Whether a session started at `ms` (epoch milliseconds), with this id, is a festive one. */
+export const festiveSession = (ms, id) => festiveAt(ms, hash(`xmas:${id}`))
 
 function hash(text) {
   let code = 2166136261
@@ -563,8 +587,11 @@ function hash(text) {
   return code >>> 0
 }
 
-/** One takodachi where it sits, with what its coming or going needs, and its WAHs. */
-function takodachi(tako, wahs, show, cat) {
+/**
+ * One takodachi where it sits, with what its coming or going needs, and its
+ * WAHs. Festive, it wears a Santa hat, or about one in four antlers.
+ */
+function takodachi(tako, wahs, show, cat, festive) {
   const how = tako.phase === 'in' ? tako.enter : tako.phase === 'out' ? tako.exit : ''
   const phase = tako.phase === 'in' ? `in e-${how}` : tako.phase === 'out' ? `out x-${how}` : 'on'
   // It answers each of Ina's WAHs a beat later, with a hop.
@@ -575,8 +602,8 @@ function takodachi(tako, wahs, show, cat) {
   const body = echoes.reduce(
     (inner, slot) => `<g style="${plays(slot, (slot.at + beat).toFixed(2), 'hop24', 'hop .3s steps(3)')}">${inner}</g>`,
     `<g class="bob" style="animation-delay:-${((tako.cell * 0.37) % 1.4).toFixed(2)}s">` +
-      (tako.staff ? `<use href="#staff"/><g class="glint" style="animation-delay:-${(beat * 4).toFixed(2)}s">${GLINT}</g>` : '') +
-      `<use href="#tako"/>${tako.ears ? '<use href="#cear"/>' : ''}${tako.kind === 'cookie' ? COOKIE : LAPTOP}${part?.on ?? ''}</g>`,
+      (tako.staff ? `<use href="#staff"/><use href="#gl" class="glint" style="animation-delay:-${(beat * 4).toFixed(2)}s"/>` : '') +
+      `<use href="#tako"/>${tako.ears ? '<use href="#cear"/>' : ''}${festive ? `<use href="#${(hash(tako.id) >>> 24) % 4 === 0 ? 'xa' : 'xh'}"/>` : ''}<use href="#${tako.kind === 'cookie' ? 'ck' : 'lap'}"/>${part?.on ?? ''}</g>`,
   )
 
   return (
@@ -618,10 +645,10 @@ const CSS = `
 .doze .closed{animation:off calc(var(--d) + 1s)}
 .doze .z1{animation:off calc(var(--d) + 1.2s)}.doze .z2{animation:off calc(var(--d) + 1.6s)}.doze .z3{animation:off calc(var(--d) + 2s)}
 .in .bob,.on .bob{animation:bob 1.4s steps(1) infinite}
-.in .al,.on .al{animation:bob .4s steps(1) infinite}
-.in .ar,.on .ar{animation:bob .4s steps(1) -.2s infinite}
-.in .cookie,.on .cookie{animation:munch .7s steps(1) infinite}
-.in .crumb,.on .crumb{animation:flip .7s steps(1) infinite}
+.al{animation:bob .4s steps(1) infinite}
+.ar{animation:bob .4s steps(1) -.2s infinite}
+.cookie{animation:munch .7s steps(1) infinite}
+.crumb{animation:flip .7s steps(1) infinite}
 .e-pop{animation:pop .5s steps(5) backwards}
 .e-fall{animation:fall .7s steps(4) backwards}
 .e-circle{animation:pop .5s steps(5) .4s backwards}
@@ -718,11 +745,11 @@ function playing({ special, ina }) {
  * `left` and `right` are how far in from the window's edges the sprites stand,
  * in pixels: clear of side panels drawn over the backdrop.
  */
-export function draw(scene, { left = 0, right = 0 } = {}, grips = HOLD) {
+export function draw(scene, { left = 0, right = 0 } = {}, grips = HOLD, festive = false) {
   const show = playing(scene)
   // A show holds back what she would say over it, and her dozing off.
   const hold = show === null ? 0 : show.x + SHOW
-  const said = waiting(lines(scene), scene, hold)
+  const said = waiting(lines(scene, festive), scene, hold)
   const wahs = said.filter(slot => slot.kind !== 'stay' && (slot.text.includes('WAH') || slot.text.includes('NYAH')))
   // She finishes her line before she dozes off.
   // Frieren Ina is sent back first, and regular Ina has a moment awake.
@@ -731,26 +758,26 @@ export function draw(scene, { left = 0, right = 0 } = {}, grips = HOLD) {
   const cat = scene.form === 'cat'
   const lull = (scene.form === 'frieren' ? 5 : cat && scene.cue === 'ask' ? 5.4 : cat ? 4 : scene.cue === 'ask' ? 3 : 2.4) + hold
   const state = `${scene.ina}${scene.form === 'frieren' ? ' f' : scene.form === 'cat' ? ' c' : ''}${scene.ao ? ' a' : ''}${show === null ? '' : ` s-${show.kind}`}`
-  const parts = show === null ? null : showParts(show.kind, { say: overHead, mouth: MOUTH_OPEN, nerd: scene.form === 'nerd', cat: scene.form === 'cat', aim: show.aim })
+  const parts = show === null ? null : showParts(show.kind, { say: overHead, mouth: MOUTH_OPEN, nerd: scene.form === 'nerd', cat: scene.form === 'cat', aim: show.aim, festive })
   // When Ao-chan rises: as nerd Ina wakes, or once Frieren or cat Ina is summoned.
   const rises = scene.form === 'nerd' ? 0.2 : 1.9
-  const arms = tentacles(grips, { awake: working(scene), ears: scene.form === 'cat' })
+  const arms = tentacles(grips, { awake: working(scene), ears: scene.form === 'cat', festive })
   const held = grips.high !== 'none' || grips.low !== 'none'
 
   // No viewBox on the root: one unit is one CSS pixel, so the sprites keep whole
   // pixels at any window size, pinned to the edges by the nested svgs. The
   // style fills the view where a surface puts the markup in a page of its own.
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" style="position:fixed;top:0;left:0;width:100vw;height:100vh${show === null ? '' : `;--x:${show.x.toFixed(2)}s`}" shape-rendering="crispEdges"><style>${CSS}${scene.form === 'cat' ? CAT_CSS : ''}${parts?.css ?? ''}</style>` +
-    `<defs><radialGradient id="glow"><stop offset="0" stop-color="#3a2670" stop-opacity=".5"/><stop offset="1" stop-color="#3a2670" stop-opacity="0"/></radialGradient>${DEFS}${scene.form === 'cat' ? NYAH_ECHO : ''}${scene.takos.some(tako => tako.ears) || (scene.form === 'cat' && held) ? TAKO_EARS : ''}${parts?.defs ?? ''}</defs>` +
+    `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" style="position:fixed;top:0;left:0;width:100vw;height:100vh${show === null ? '' : `;--x:${show.x.toFixed(2)}s`}" shape-rendering="crispEdges"><style>${CSS}${festive ? XMAS_CSS : ''}${scene.form === 'cat' ? CAT_CSS : ''}${parts?.css ?? ''}</style>` +
+    `<defs><radialGradient id="glow"><stop offset="0" stop-color="#3a2670" stop-opacity=".5"/><stop offset="1" stop-color="#3a2670" stop-opacity="0"/></radialGradient>${festive ? DEFS_XMAS : DEFS}${scene.form === 'cat' ? NYAH_ECHO : ''}${scene.takos.some(tako => tako.ears) || (scene.form === 'cat' && held) ? TAKO_EARS : ''}${parts?.defs ?? ''}</defs>` +
     `<rect width="100%" height="100%" fill="#07050c"/>` +
     `<svg x="100%" y="50%" overflow="visible"><circle cx="${-right - 135}" r="1000" fill="url(#glow)"/></svg>` +
-    `<g class="${scene.ina}">${STARS}</g>${parts?.under ?? ''}` +
+    `<g class="${scene.ina}">${festive ? FLAKES + SNOW : STARS}</g>${parts?.under ?? ''}` +
     `<svg x="100%" overflow="visible"><g transform="translate(${-right} 0)"><g class="ina-s">${arms.high}</g></g></svg>` +
     `<svg x="100%" y="100%" overflow="visible"><g transform="translate(${-right} 0)"><g class="ina-s">${arms.low}</g></g></svg>` +
     // The takodachis' own left edge: what reaches past it is cut, so a tentacle comes out from behind it.
-    `<svg x="${left}">${scene.takos.map(tako => takodachi(tako, wahs, show, scene.form === 'cat')).join('')}</svg>` +
-    `<svg x="100%" y="50%" overflow="visible"><g transform="translate(${-right} 0)"><g class="ina-s"><g transform="translate(-52 -16)" class="${state}" style="--d:${lull}s;--a:${rises}s;--h:${hold}s">${ina(scene, said, wahs, parts, hold)}</g></g></g></svg>` +
+    `<svg x="${left}">${scene.takos.map(tako => takodachi(tako, wahs, show, scene.form === 'cat', festive)).join('')}</svg>` +
+    `<svg x="100%" y="50%" overflow="visible"><g transform="translate(${-right} 0)"><g class="ina-s"><g transform="translate(-52 -16)" class="${state}" style="--d:${lull}s;--a:${rises}s;--h:${hold}s">${ina(scene, said, wahs, parts, hold, festive)}</g></g></g></svg>` +
     `${parts?.over ?? ''}</svg>`
   )
 }
